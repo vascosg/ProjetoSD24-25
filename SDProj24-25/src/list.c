@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "list-private.h"
-#include "list.h"
+#include "../include/list-private.h"
+#include "../include/list.h"
 
 /* Função que cria e inicializa uma nova lista (estrutura list_t a
  * ser definida pelo grupo no ficheiro list-private.h).

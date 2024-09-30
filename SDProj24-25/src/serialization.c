@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
-#include "serialization.h"
+#include "../include/serialization.h"
 
 /*
  * Serializes the array of strings into a buffer.

@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <assert.h>
 
-#include "block.h"
+#include "../include/block.h"
 
 /**************************************************************/
 void pee(const char *msg)

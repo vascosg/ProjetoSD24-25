@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
-#include "table-private.h"
+#include "../include/table-private.h"
 
 /*Funcao para decidir qual a lista dentro da tabela no qual a entry
  * vai ser colocada.Multiplica o valor ASCII  dos digitos na key e devolve o

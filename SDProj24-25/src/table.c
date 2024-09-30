@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "table.h"
-#include "list.h"
-#include "table-private.h"
+#include "../include/table.h"
+#include "../include/list.h"
+#include "../include/table-private.h"
 
 /* Função para criar e inicializar uma nova tabela hash, com n
  * linhas (n = módulo da função hash).
