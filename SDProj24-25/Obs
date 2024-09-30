@@ -1,0 +1,3 @@
+Em struct block_t *block_create(int size, void *data); e int block_replace(struct block_t *b, int new_size, void *new_data); size não pode ser 0 e data ser NULL ?
+Em main.c os testes de block.c assumem que é feito malloc na data antes da criação  do bloco
+Em struct entry_t *entry_create(char *key, struct block_t *value) é copiado o bloco value, e atribuido a nova entry, depois o antigo value é destroido
