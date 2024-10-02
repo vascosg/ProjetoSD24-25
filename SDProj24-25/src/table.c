@@ -11,22 +11,22 @@
  */
 struct table_t *table_create(int n) {
 
-	if (n <= 0) return NULL;
+	if (n <= 0) return NULL; // Argumentos invalidos
 
 	struct table_t *table = (struct table_t *)malloc(sizeof(struct table_t));
-	if (table == NULL) return NULL;
+	if (!table ) return NULL; // Falha ao alocar memoria
 
 	table->size = n;
 	table->lists = (struct list_t **)malloc(n * sizeof(struct list_t *));
-	if (table->lists == NULL) {
+	if ( !table->lists ) { // Falha ao alocar memoria
 		free(table);
 		return NULL;
 	}
 
-	// Initialize each list in the array
+	// Inicializar as listas
 	for (int i = 0; i < n; i++) {
 		table->lists[i] = list_create();
-		if (table->lists[i] == NULL) {
+		if (!table->lists[i] ) { // Verifica se falha ao cruar a lista i
 			for (int j = 0; j < i; j++) {
 				list_destroy(table->lists[j]);
 			}
@@ -48,19 +48,19 @@ struct table_t *table_create(int n) {
  */
 int table_put(struct table_t *t, char *key, struct block_t *value) {
 
-	if ( !t || !key || !value ) {
+	if ( !t || !key || !value ) { // Argumentos invalidos
 		return -1;
 	}
 
-	int index = hash_function(key, t->size);
+	int index = hash_function(key, t->size); // Obtem o indexda lista  para key na tabela
 
 	char *key_copy = strdup(key);
 	struct entry_t *new_entry = entry_create(key_copy, block_duplicate(value));
 	struct entry_t *copy_entry = entry_duplicate(new_entry);
-	//entry_destroy(new_entry);
 
 	if(list_add(t->lists[index],copy_entry) == -1 ) return -1;
 
+	//free(value); ???
 	return 0;
 }
 
@@ -70,18 +70,18 @@ int table_put(struct table_t *t, char *key, struct block_t *value) {
  */
 struct block_t *table_get(struct table_t *t, char *key) {
 
-	if (!t || !key) {
+	if (!t || !key) { // Argumentos Invalidos
 		return NULL;
 	}
 
-	int index = hash_function(key, t->size);
+	int index = hash_function(key, t->size);// Obtem o index da lista  para key na tabela
 	struct entry_t *entry = list_get(t->lists[index], key);
 
-	if (!entry) return NULL;
+	if (!entry) return NULL; // Falha ao obter a entry da lista
 
 	struct block_t *duplicated = block_duplicate(entry->value);
 
-	if (!duplicated) return NULL;
+	if (!duplicated) return NULL; // Falha ao duplicar o block
 
 	return duplicated;
 }
@@ -91,11 +91,11 @@ struct block_t *table_get(struct table_t *t, char *key) {
  */
 int table_size(struct table_t *t) {
 
-	if (!t ) return -1;
+	if (!t ) return -1; // Argumentos invalidos
 
 	int count = 0;
 	for (int i = 0; i < t->size; i++) {
-		count += list_size(t->lists[i]);
+		count += list_size(t->lists[i]); // Conta cada linha
 	}
 
 	return count;
@@ -108,20 +108,20 @@ int table_size(struct table_t *t) {
  */
 char **table_get_keys(struct table_t *t) {
 
-	if ( !t ) return NULL;
+	if ( !t ) return NULL; // Argumentos invalidos
 
 	int size = table_size(t);
-	if (size <= 0) return NULL;
+	if (size <= 0) return NULL; // Lista sem keys
 
 	char **keys = (char **)malloc((size + 1) * sizeof(char *));
-	if (!keys ) return NULL;
+	if (!keys ) return NULL; // Falha ao alocar memoria para a lista de keys
 
 	int idx = 0;
 	for (int i = 0; i < t->size; i++) {
-		char **list_keys = list_get_keys(t->lists[i]);
+		char **list_keys = list_get_keys(t->lists[i]); // Obtem a lista com as chaves da lista i
 
 		if(list_size(t->lists[i]) > 0) {
-			for (int j = 0; list_keys[j] != NULL; j++) {
+			for (int j = 0; list_keys[j] != NULL; j++) { // Percorre a lista de keys obtida anteriormente e copia cada key para a var keys
 				keys[idx] = strdup(list_keys[j]);
 				idx++;
 			}
@@ -140,7 +140,7 @@ char **table_get_keys(struct table_t *t) {
  */
 int table_free_keys(char **keys) {
 
-	if ( !keys ) return -1;
+	if ( !keys ) return -1; // Argumentos invalidos
 
 	return list_free_keys(keys);
 }
@@ -152,9 +152,9 @@ int table_free_keys(char **keys) {
  */
 int table_remove(struct table_t *t, char *key) {
 
-	if ( !t || !key ) return -1;
+	if ( !t || !key ) return -1; // Argumentos invalidos
 
-	int index = hash_function(key, t->size);
+	int index = hash_function(key, t->size); // Obtem o index da lista  para key na tabela
 	return list_remove(t->lists[index], key);
 }
 
@@ -164,9 +164,9 @@ int table_remove(struct table_t *t, char *key) {
  */
 int table_destroy(struct table_t *t) {
 
-	if ( !t ) return -1;
+	if ( !t ) return -1; // Argumentos invalidos
 
-	for (int i = 0; i < t->size; i++) {
+	for (int i = 0; i < t->size; i++) { //  Destroi cada lista da table
 		list_destroy(t->lists[i]);
 	}
 

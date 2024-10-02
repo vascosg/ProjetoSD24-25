@@ -9,15 +9,13 @@
 */
 struct block_t *block_create(int size, void *data) {
 
-	if (size <= 0 || data == NULL) { // Nao deve criar blocos se o tamanho for 0 ou o ponteiro para data for NULL
+	if ( size <= 0 || !data ) { // Nao deve criar blocos se o tamanho for 0 ou o ponteiro para data for NULL
 	        return NULL; // Retorna NULL se a verificação falhar
 	    }
 
     struct block_t *new_block = malloc(sizeof(struct block_t)); //Tenta criar um novo bloco
 
-    if (!new_block) {
-        return NULL; // Falha ao alocar memória
-    }
+    if (!new_block) return NULL; // Falha ao alocar memoria
 
     new_block->datasize = size;
     new_block->data = data;
@@ -37,11 +35,8 @@ struct block_t *block_duplicate(struct block_t *b) {
 
     struct block_t *dup_block = malloc(sizeof(struct block_t));
 
-    if (!dup_block) {
-        return NULL; // Falha ao alocar memória
-    }
+    if (!dup_block) return NULL; // Falha ao alocar memoria
 
-    // Copia os dados
     dup_block->datasize = b->datasize;
     dup_block->data = malloc(b->datasize); // Aloca memória para os dados para a nova instancia ser completamente independente
 
@@ -61,20 +56,11 @@ struct block_t *block_duplicate(struct block_t *b) {
 */
 int block_replace(struct block_t *b, int new_size, void *new_data) {
 
-    if (!b || new_size == 0|| new_data == NULL) {
+    if (!b || new_size <= 0|| new_data == NULL) {
     	return -1; // Verifica se o bloco existe e se nao e vazio
     }
 
-    //free(b->data); // Liberta memoria antiga
-
-    /*b->data = malloc(new_size);
-
-    if (!b->data) {
-        return -1; // Falha ao alocar memoria nova
-    }*/
-
     b->data =new_data;
-    //memcpy(b->data, new_data, new_size); // Copia os novos dados
     b->datasize = new_size; // Atualiza o tamanho
 
     return 0; // Sucesso

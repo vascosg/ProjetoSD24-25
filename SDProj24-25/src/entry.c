@@ -9,35 +9,18 @@
  */
 struct entry_t *entry_create(char *key, struct block_t *value) {
 
-	if (key == NULL || value == NULL) { // Verifica se a chave é válida
-		return NULL; // Retorna NULL se a verificação falhar
+	if ( !key || !value ) { // Verifica se a chave é válida
+		return NULL;
 	}
 
 	struct entry_t *new_entry = malloc(sizeof(struct entry_t)); // Aloca memória para a nova entry
 
-	if (!new_entry) {
-		return NULL; // Falha ao alocar memória
-	}
+	if (!new_entry) return NULL; // Falha ao alocar memoria
 
-	// Aloca memória para a chave e copia a string
-	/*new_entry->key = malloc(strlen(key) + 1); // +1 para o terminador nulo
-	if (!new_entry->key) {
-		free(new_entry); // Libera a entry se falhar
-		return NULL;
-	}
-
-	strcpy(new_entry->key, key); // Copia a chave*/
 	new_entry->key = key;
+	new_entry->value = value;
 
-	// Atribui o valor do bloco a nova entrada
-	new_entry->value = value; // Duplica o bloco
-	/*if (!new_entry->value) {
-		free(new_entry->key); // Liberta a chave se a duplicação falhar
-		free(new_entry); // Liberta a entry
-		return NULL;
-	}*/
-
-	return new_entry; // Retorna a nova entry criada
+	return new_entry;
 }
 
 /* Função que compara duas entries e retorna a ordem das mesmas, sendo esta
@@ -47,9 +30,10 @@ struct entry_t *entry_create(char *key, struct block_t *value) {
  */
 int entry_compare(struct entry_t *e1, struct entry_t *e2) {
 
-	if (e1 == NULL || e2 == NULL) {
+	if ( !e1  || !e2 ) {
 		return -2; // Retorna -2 em caso de erro
 	}
+
 	return strcmp(e1->key, e2->key); // Compara as chaves
 }
 
@@ -59,25 +43,23 @@ int entry_compare(struct entry_t *e1, struct entry_t *e2) {
  */
 struct entry_t *entry_duplicate(struct entry_t *e) {
 
-	if (e == NULL) return NULL; // Retorna NULL se a entrada não existir
+	if (!e ) return NULL; // Retorna NULL se a entrada não existir
 
 	struct block_t *dup_value = block_duplicate(e->value); // Duplicar o bloco de dados para garantir uma cópia independente
-	if (dup_value == NULL) {
-		return NULL; // Retorna NULL se a duplicação do bloco falhar
-	}
+	if ( !dup_value ) return NULL; // Falha ao duplicar bloco
 
 	char *dup_key = strdup(e->key);
-	if (dup_key == NULL) {
+
+	if ( !dup_key ) { // Falha ao duplicar key == destruir bloco
 	    block_destroy(dup_value);
 	    return NULL;
 	}
+
 	struct entry_t *dup_entry = entry_create(dup_key, dup_value);// Cria uma nova entry, dup_value é destruido e dup_entry fica com uma cópia
 
-	if (!dup_entry) {
-		return NULL; // Retorna NULL em caso de falha
-	}
+	if (!dup_entry) return NULL; // Falha ao fazer o dup
 
-	return dup_entry; // Retorna a nova entry duplicada
+	return dup_entry;
 }
 
 /* Função que substitui o conteúdo de uma entry, usando a nova chave e
@@ -87,7 +69,7 @@ struct entry_t *entry_duplicate(struct entry_t *e) {
  */
 int entry_replace(struct entry_t *e, char *new_key, struct block_t *new_value) {
 
-	if (e == NULL || new_key == NULL || new_value == NULL) {
+	if (!e  || !new_key  || !new_value ) {
 		return -1; // Retorna -1 em caso de erro
 	}
 
@@ -103,7 +85,7 @@ int entry_replace(struct entry_t *e, char *new_key, struct block_t *new_value) {
 		return -1; // Retorna -1 em caso de erro
 	}
 
-	return 0; // Retorna 0 em caso de sucesso
+	return 0;
 }
 
 /* Função que elimina uma entry, libertando a memória por ela ocupada.
@@ -119,5 +101,5 @@ int entry_destroy(struct entry_t *e) {
 	block_destroy(e->value); // Libera o bloco de dados
 	free(e); // Liberta a memória da entry
 
-	return 0; // Retorna 0 em caso de sucesso
+	return 0;
 }

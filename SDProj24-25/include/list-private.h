@@ -3,17 +3,15 @@
 
 #include "entry.h"
 
-// Define a estrutura de cada node na List
 struct node_t {
-	struct node_t *prev;
-    struct entry_t *entry;
-    struct node_t *next;
+	struct node_t *prev; // Node anterior na lista, Null se for head
+    struct entry_t *entry; // Entry guardada no node
+    struct node_t *next; // Node a frente deste na lista
 };
 
-// Define the list structure
 struct list_t {
     struct node_t *head; // Aponta para o pŕoximo elemento da lista
-    int size;            // Tamanho da lista
+    int size; // Tamanho da lista
 };
 
 #endif

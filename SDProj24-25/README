@@ -1,3 +1,9 @@
-Em struct block_t *block_create(int size, void *data); e int block_replace(struct block_t *b, int new_size, void *new_data); size não pode ser 0 e data ser NULL ?
-Em main.c os testes de block.c assumem que é feito malloc na data antes da criação  do bloco
-Em struct entry_t *entry_create(char *key, struct block_t *value) é copiado o bloco value, e atribuido a nova entry, depois o antigo value é destroido
+O projeto falha o quarto teste de entry ( testReplace ) apesar na linha result = result && (entry->key == key2) && (entry->value == value2);
+Isto acontece porque o entry_replace é feito utilizando o block_replace que não lrecebe o bloco inteiro mas sim os seus componentes, o que faz
+com que tenha de se criar um novo bloco e trocalo na entry infez de atualizar diretamente os valores do bloco original.
+entry->value == value2 resulta em false apesarde os conteudos de value e value2 serem iguais
+
+Para além desse, o projeto falha também um teste da list ( testINsertDupKey ) por motivos semelhantes.
+Isto porque na linha result = result && (list_get(list, "abc1") == entry4); é comparado entry1 com entry4 que 
+teoricamente são iguais uma vez que a chave e o value  são eguais, mas como entry4 é originado de entry_duplicate que
+retorna uma entry com um endereço novo a igualdade nunca se verifica a 100% 
