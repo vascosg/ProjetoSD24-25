@@ -73,9 +73,8 @@ int entry_replace(struct entry_t *e, char *new_key, struct block_t *new_value) {
 		return -1; // Retorna -1 em caso de erro
 	}
 
-	// Libera a memória ocupada pela chave antiga
-	free(e->key);
-
+	entry_destroy(e); // Liberta a memória ocupada pela entry
+	
 	// Aloca memória para a nova chave e copia
 	e->key = new_key;
 
@@ -99,7 +98,6 @@ int entry_destroy(struct entry_t *e) {
 
 	free(e->key); // Liberta a memória da chave
 	block_destroy(e->value); // Libera o bloco de dados
-	free(e); // Liberta a memória da entry
 
 	return 0;
 }

@@ -65,11 +65,13 @@ int list_add(struct list_t *l, struct entry_t *entry) {
 
 		if (entry_compare(current->entry, new_node->entry) == 0) { // Entrys iguais
 
-			//Como teem a mesma key, devem se dar replace
-			entry_replace(current->entry, new_node->entry->key, new_node->entry->value);
+			if(current->entry == new_node->entry) { // Se forem iguais, nao faz nada
+				//Como teem a mesma key, devem se dar replace
+				entry_replace(current->entry, new_node->entry->key, new_node->entry->value);
 
-			free(new_node);
-			return 1;
+				free(new_node);
+				return 1;
+			}
 
 		} else if (entry_compare(current->entry, new_node->entry) == 1) { // New_node e mais pequeno que o current
 			                                                              // Logo vai new_node fica atraz de current na lisa

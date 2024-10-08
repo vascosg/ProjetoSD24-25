@@ -45,7 +45,7 @@ struct block_t *block_duplicate(struct block_t *b) {
         return NULL;
     }
 
-    memcpy(dup_block->data, b->data, b->datasize); // Copia os dados
+    block_create(dup_block->datasize,dup_block->data); // Copia os dados
 
     return dup_block;
 }
@@ -60,8 +60,9 @@ int block_replace(struct block_t *b, int new_size, void *new_data) {
     	return -1; // Verifica se o bloco existe e se nao e vazio
     }
 
-    b->data =new_data;
-    b->datasize = new_size; // Atualiza o tamanho
+    block_destroy(b); // Liberta o bloco antigo
+
+    block_create(new_size, new_data); // Cria um novo bloco com os novos dados
 
     return 0; // Sucesso
 }
@@ -73,8 +74,8 @@ int block_replace(struct block_t *b, int new_size, void *new_data) {
 int block_destroy(struct block_t *b) {
 
     if (!b) return -1; // Verifica se o bloco existe
-    free(b->data); // LIberta os dados
-    free(b); // LIberta a estrutura
+    free(b->data); // Liberta os dados
+    free(b); // Liberta a estrutura
 
     return 0; // Sucesso
 }

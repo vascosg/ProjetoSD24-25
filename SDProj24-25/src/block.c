@@ -60,7 +60,9 @@ int block_replace(struct block_t *b, int new_size, void *new_data) {
     	return -1; // Verifica se o bloco existe e se nao e vazio
     }
 
-    b->data =new_data;
+    block_destroy(b); // Liberta o bloco antigo
+
+    b->data = new_data;
     b->datasize = new_size; // Atualiza o tamanho
 
     return 0; // Sucesso
@@ -73,8 +75,7 @@ int block_replace(struct block_t *b, int new_size, void *new_data) {
 int block_destroy(struct block_t *b) {
 
     if (!b) return -1; // Verifica se o bloco existe
-    free(b->data); // LIberta os dados
-    free(b); // LIberta a estrutura
+    free(b->data); // Liberta os dados
 
     return 0; // Sucesso
 }
