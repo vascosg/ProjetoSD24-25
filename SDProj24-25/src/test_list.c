@@ -4,9 +4,9 @@
 #include <errno.h>
 #include <assert.h>
 
-#include "list.h"
-#include "block.h"
-#include "entry.h"
+#include "../include/list.h"
+#include "../include/block.h"
+#include "../include/entry.h"
 
 /**************************************************************/
 void pee(const char *msg)
@@ -210,9 +210,9 @@ int testInsertDupKey() {
 	result = result && (list_add(list, entry4) == 1);
 	result = result && (list_get(list, "abc1") == entry4);
 	result = result && (list_add(list, entry5) == 1);
-	result = result && (list_get(list, "abc1") == entry5);
+	result = result && (list_get(list, "abc2") == entry5); // V2.b
 	result = result && (list_add(list, entry6) == 1);
-	result = result && (list_get(list, "abc2") == entry2);
+	result = result && (list_get(list, "abc2") != entry2); // V2.c
 	result = result && (list_get(list, "abc3") == entry6);
 	result = result && (list_size(list) == 3);
 

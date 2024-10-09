@@ -41,7 +41,7 @@ struct block_t *block_duplicate(struct block_t *b) {
     dup_block->data = malloc(b->datasize); // Aloca memória para os dados para a nova instancia ser completamente independente
 
     if (!dup_block->data) {
-        free(dup_block); // Libera a estrutura se falhar
+        free(dup_block); // Liberta a estrutura se falhar
         return NULL;
     }
 
@@ -62,8 +62,7 @@ int block_replace(struct block_t *b, int new_size, void *new_data) {
 
     block_destroy(b); // Liberta o bloco antigo
 
-    b->data = new_data;
-    b->datasize = new_size; // Atualiza o tamanho
+    block_create(new_size, new_data); // Cria um novo bloco com os novos dados
 
     return 0; // Sucesso
 }
@@ -76,6 +75,7 @@ int block_destroy(struct block_t *b) {
 
     if (!b) return -1; // Verifica se o bloco existe
     free(b->data); // Liberta os dados
+    free(b); // Liberta a estrutura
 
     return 0; // Sucesso
 }

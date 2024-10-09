@@ -58,6 +58,8 @@ int table_put(struct table_t *t, char *key, struct block_t *value) {
 	struct entry_t *new_entry = entry_create(key_copy, block_duplicate(value));
 	struct entry_t *copy_entry = entry_duplicate(new_entry);
 
+	entry_destroy(new_entry);
+
 	if(list_add(t->lists[index],copy_entry) == -1 ) return -1;
 
 	//free(value); ???
@@ -127,7 +129,7 @@ char **table_get_keys(struct table_t *t) {
 			}
 		}
 
-		free(list_keys);
+		list_free_keys(list_keys);
 	}
 
 	keys[idx] = NULL;
