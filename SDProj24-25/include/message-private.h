@@ -1,8 +1,8 @@
 #ifndef _MESSAGE_PRIVATE_H
 #define _MESSAGE_PRIVATE_H
 
-int write_all(int sock, void *buf, int len);
+size_t write_all(int sock, const void *buf, size_t len);
 
-int read_all(int sock, void *buf, int len);
+size_t read_all(int sock, void *buf, size_t len);
 
 #endif

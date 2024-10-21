@@ -6,7 +6,7 @@
 #define PROTOBUF_C__NO_DEPRECATED
 #endif
 
-#include "htmessages.pb-c.h"
+#include "../include/htmessages.pb-c.h"
 void   entry_t__init
                      (EntryT         *message)
 {

@@ -1,5 +1,6 @@
 #include "../include/client_stub-private.h"
 #include "../include/htmessages.pb-c.h"
+#include "../include/client_network.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,12 +36,15 @@ struct rtable_t *rtable_connect(char *address_port) {
 	// Cria socket
 	rtable->sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (rtable->sockfd < 0) {
+		printf("Falha ao conecar ao criar a socket.");
 		free(rtable->server_address);
 		free(rtable);
 		return NULL;
 	}
 
-	network_connect(rtable); // Conecta ao servidor
+	if(network_connect(rtable) == -1) {
+		printf("Falha ao conectar ao servidor.");
+	}
 
 	return rtable;
 }
@@ -73,9 +77,27 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 	MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_PUT;  // Codigos de commando
 	msg.c_type = MESSAGE_T__C_TYPE__CT_ENTRY; // Codigos de tipo de informacao
+	entry_t__init(entry);
 	msg.entry = entry;
 
-	// Em casso de erro a enviar e receber
+	if (msg.entry != NULL) {
+		printf("Entry key: %s\n", msg.entry->key);  // Assuming entry has a key field
+	} else {
+		fprintf(stderr, "msg.entry is NULL!\n");
+		return -1; // Handle error case
+	}
+
+	// Empacotar menssagem
+	unsigned int packed_size = message_t__get_packed_size(&msg);
+	uint8_t *packed_msg = malloc(packed_size);
+	if (!packed_msg) {
+		return -1;
+	}
+
+	//Por nobuffer
+	message_t__pack(&msg, packed_msg);
+
+	//Enviar e receber
 	if (network_send_receive(rtable->sockfd, &msg) < 0) {
 		entry_destroy(msg.entry);
 		return -1;
@@ -107,7 +129,7 @@ struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 	}
 
 	if (response->c_type == MESSAGE_T__C_TYPE__CT_ENTRY) { // verificar se realmente recebeu a entrada
-		struct entry_t *entry = entry_duplycate(response->entry);
+		struct entry_t *entry = entry_duplicate(response->entry);
 		return entry;
 	}
 
