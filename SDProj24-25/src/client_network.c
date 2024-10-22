@@ -33,16 +33,17 @@ int network_connect(struct rtable_t *rtable) {
 		return -1;
 	}
 
+	// verifica se o socket é válido
+	if (rtable->sockfd < 0) {
+		perror("Socket inválido");
+		return -1;
+	}
+
 	// Tenta conectar ao servidor
 	if (connect(rtable->sockfd, (struct sockaddr *)&server, sizeof(server)) < 0) {
 		perror("Erro ao conectar ao servidor");
 		close(rtable->sockfd);
 		return -1;
-	}
-
-	if (rtable->sockfd < 0) {
-		    perror("Socket inválido");
-		    return NULL;
 	}
 
 	return 0; // Conexão estabelecida com sucesso
@@ -62,8 +63,12 @@ MessageT *network_send_receive(struct rtable_t *rtable, MessageT *msg) {
 
 	// 1. Serializar a mensagem
 	unsigned int len = message_t__get_packed_size(msg); // Tamanho da mensagem serializada
-	void* buf = malloc(len);
 	if (!len) return NULL;
+	void* buf = malloc(len);
+	if (!buf) {  // Verifica se a alocação foi bem sucedida
+		perror("Erro ao alocar memória para a mensagem");
+		return NULL;
+	}
 
 	message_t__pack(msg, buf); // Serializa a mensagem para o buffer
 
@@ -132,5 +137,3 @@ int network_close(struct rtable_t *rtable) {
 
 	return 0;
 }
-
-

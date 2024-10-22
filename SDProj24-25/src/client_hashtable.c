@@ -25,7 +25,8 @@ int main(int argc, char **argv) {
 	struct rtable_t *rt = rtable_connect(argv[1]);
 
 	if (!rt) {
-		printf("Erro ao conectar ao servidor. A terminar o programa...");
+		printf("Erro ao conectar ao servidor. A terminar o programa...\n");
+		return -1;
 	}
 
 	// Loop principal
@@ -34,7 +35,7 @@ int main(int argc, char **argv) {
 
 		// Lê o comando do utilizador
 		if (fgets(command, MAX_COMMAND_LEN, stdin) == NULL) {
-			printf("Erro ao let o comando.\n");
+			printf("Erro ao ler o comando.\n");
 			continue;
 		}
 
@@ -88,5 +89,3 @@ int main(int argc, char **argv) {
 
 	return 0;
 }
-
-

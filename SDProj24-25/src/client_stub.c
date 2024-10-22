@@ -15,7 +15,7 @@ struct rtable_t *rtable_connect(char *address_port) {
 
 
 	// Aloca memoria para rtable
-	struct rtable_t *rtable = (struct rtable_t *) malloc(sizeof(struct rtable_t));
+	struct rtable_t *rtable = malloc(sizeof(struct rtable_t));
 	if (!rtable) return NULL;
 
 	// Parse the server address and port
@@ -132,7 +132,7 @@ struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 	msg.c_type = MESSAGE_T__C_TYPE__CT_KEY;  // Codigos de tipo de informacao
 	msg.key = key;
 
-	MessageT *response = network_send_receive(rtable->sockfd, &msg);
+	MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
 		return NULL;
 	}
@@ -161,7 +161,7 @@ int rtable_del(struct rtable_t *rtable, char *key){
 	msg.c_type = MESSAGE_T__C_TYPE__CT_KEY;  // Codigos de tipo de informacao
 	msg.key = key;
 
-	if (network_send_receive(rtable->sockfd, &msg) < 0) {
+	if (network_send_receive(rtable, &msg) < 0) {
 		return -1;
 	}
 
@@ -180,7 +180,7 @@ int rtable_size(struct rtable_t *rtable) {
 	msg.opcode = MESSAGE_T__OPCODE__OP_SIZE;
 
 	// Recebe tamanho
-	MessageT *response = network_send_receive(rtable->sockfd, &msg);
+	MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
 		return -1;
 	}
@@ -201,7 +201,7 @@ char **rtable_get_keys(struct rtable_t *rtable) {
 	msg.opcode = MESSAGE_T__OPCODE__OP_GETKEYS;
 
 	// Receber as keys
-	MessageT *response = network_send_receive(rtable->sockfd, &msg);
+	MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
 		return NULL;
 	}
@@ -237,7 +237,7 @@ struct entry_t **rtable_get_table(struct rtable_t *rtable) {
 	msg.opcode = MESSAGE_T__OPCODE__OP_GETTABLE;
 
 	// Receber tabela
-	MessageT *response = network_send_receive(rtable->sockfd, &msg);
+	MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
 		return NULL;
 	}
