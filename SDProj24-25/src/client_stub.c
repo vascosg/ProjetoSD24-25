@@ -77,14 +77,23 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 	MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_PUT;  // Codigos de commando
 	msg.c_type = MESSAGE_T__C_TYPE__CT_ENTRY; // Codigos de tipo de informacao
-	entry_t__init(entry);
-	msg.entry = entry;
 
-	if (msg.entry != NULL) {
-		printf("Entry key: %s\n", msg.entry->key);  // Assuming entry has a key field
-	} else {
+	//Criar nova EntryT apartir da entry_t
+	EntryT newEntry = {
+			PROTOBUF_C_MESSAGE_INIT(&entry_t__descriptor),
+			entry -> key,
+			{entry->value->datasize, block_duplicate(entry->value->data)}
+	};
+
+
+	entry_t__init(&newEntry);
+	msg.entry = &newEntry;
+
+	entry_destroy(entry);
+
+	if (!msg.entry ) {
 		fprintf(stderr, "msg.entry is NULL!\n");
-		return -1; // Handle error case
+				return -1; // Handle error case
 	}
 
 	// Empacotar menssagem
@@ -98,7 +107,7 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 	message_t__pack(&msg, packed_msg);
 
 	//Enviar e receber
-	if (network_send_receive(rtable->sockfd, &msg) < 0) {
+	if (network_send_receive(rtable, &msg) < 0) {
 		entry_destroy(msg.entry);
 		return -1;
 	}

@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
 	char command[MAX_COMMAND_LEN];
 	char *tokens[MAX_TOKENS]; // Array to store pointers to tokens
 	int token_count;
-	struct rtable *rt = rtable_connect(argv[1]);
+	struct rtable_t *rt = rtable_connect(argv[1]);
 
 	if (!rt) {
 		printf("Erro ao conectar ao servidor. A terminar o programa...");
@@ -69,6 +69,11 @@ int main(int argc, char **argv) {
 		if(token_count > 0 && strcmp(tokens[0], "put") == 0){
 			struct block_t *block = block_create(sizeof(tokens[2]),tokens[2]);
 			struct entry_t *entry = entry_create(tokens[1],block);
+
+			if (rt->sockfd < 0) {
+					    perror("Socket inválido");
+					    return NULL;
+				}
 			rtable_put(rt,entry);
 		}
 
