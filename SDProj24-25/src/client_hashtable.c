@@ -5,9 +5,57 @@
 #include "../include/entry.h"
 #include "../include/block.h"
 #include "../include/client_stub-private.h"
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <errno.h>
 
 #define MAX_COMMAND_LEN 1024
 #define MAX_TOKENS 3
+
+/*void test_write_read_all()
+{
+    // Create a pair of connected sockets
+    int sv[2];  // sv[0] and sv[1] are the file descriptors for the socket pair
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == -1) {
+        perror("socketpair");
+        return;
+    }
+
+    const char *test_message = "Hello, world!";
+    char read_buffer[100] = {0};  // Buffer to store the read message
+
+    // Test write_all
+    size_t write_len = write_all(sv[0], test_message, strlen(test_message));
+    if (write_len != strlen(test_message)) {
+        fprintf(stderr, "write_all failed, wrote %zu bytes, expected %zu\n", write_len, strlen(test_message));
+        close(sv[0]);
+        close(sv[1]);
+        return;
+    } else {
+        printf("write_all succeeded, wrote %zu bytes\n", write_len);
+    }
+
+    // Test read_all
+    size_t read_len = read_all(sv[1], read_buffer, strlen(test_message));
+    if (read_len != strlen(test_message)) {
+        fprintf(stderr, "read_all failed, read %zu bytes, expected %zu\n", read_len, strlen(test_message));
+    } else {
+        printf("read_all succeeded, read %zu bytes\n", read_len);
+    }
+
+    // Verify that the message was received correctly
+    if (strncmp(test_message, read_buffer, strlen(test_message)) == 0) {
+        printf("Message received successfully: %s\n", read_buffer);
+    } else {
+        fprintf(stderr, "Message received incorrectly, got: %s\n", read_buffer);
+    }
+
+    // Close the sockets
+    close(sv[0]);
+    close(sv[1]);
+}*/
 
 int main(int argc, char **argv) {
 

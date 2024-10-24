@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include "../include/message-private.h"
+#include "../include/htmessages.pb-c.h"
 #include "../include/client_network.h"
 #include "../include/client_stub-private.h"
 
@@ -58,7 +59,7 @@ int network_connect(struct rtable_t *rtable) {
  * - Tratar de forma apropriada erros de comunicação;
  * - Retornar a mensagem de-serializada ou NULL em caso de erro.
  */
-MessageT *network_send_receive(struct rtable_t *rtable, MessageT *msg) {
+struct MessageT *network_send_receive(struct rtable_t *rtable, struct MessageT *msg) {
 	if (!rtable || !msg) return NULL;
 
 	// 1. Serializar a mensagem
@@ -70,7 +71,7 @@ MessageT *network_send_receive(struct rtable_t *rtable, MessageT *msg) {
 		return NULL;
 	}
 
-	message_t__pack(msg, buf); // Serializa a mensagem para o buffer
+	int msg_len = message_t__pack(msg, buf); // Serializa a mensagem para o buffer
 
 	// 2. Enviar o tamanho da mensagem (2 bytes - short)
 
@@ -112,7 +113,7 @@ MessageT *network_send_receive(struct rtable_t *rtable, MessageT *msg) {
 	}
 
 	// 6. Deserializar a resposta
-	MessageT *response_msg = message_t__unpack(NULL, response_size, response_buffer);
+	struct MessageT *response_msg = message_t__unpack(NULL, response_size, response_buffer);
 	free(response_buffer); // Liberta o buffer após a deserialização
 
 	if (!response_msg) {

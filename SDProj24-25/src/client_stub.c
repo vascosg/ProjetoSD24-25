@@ -74,7 +74,7 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 	}
 
 	// Criar menssagem ainda nao serializada
-	MessageT msg = MESSAGE_T__INIT;
+	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_PUT;  // Codigos de commando
 	msg.c_type = MESSAGE_T__C_TYPE__CT_ENTRY; // Codigos de tipo de informacao
 
@@ -127,12 +127,12 @@ struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 	}
 
 	// Criar menssagem ainda nao serializada
-	MessageT msg = MESSAGE_T__INIT;
+	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_GET;  // Codigos de commando
 	msg.c_type = MESSAGE_T__C_TYPE__CT_KEY;  // Codigos de tipo de informacao
 	msg.key = key;
 
-	MessageT *response = network_send_receive(rtable, &msg);
+	struct MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
 		return NULL;
 	}
@@ -156,7 +156,7 @@ int rtable_del(struct rtable_t *rtable, char *key){
 	}
 
 	// Criar menssagem ainda nao serializada
-	MessageT msg = MESSAGE_T__INIT;
+	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_DEL;  // Codigos de commando
 	msg.c_type = MESSAGE_T__C_TYPE__CT_KEY;  // Codigos de tipo de informacao
 	msg.key = key;
@@ -176,11 +176,11 @@ int rtable_size(struct rtable_t *rtable) {
 	if (rtable == NULL) return -1;
 
 	// Criar menssagem ainda nao serializada
-	MessageT msg = MESSAGE_T__INIT;
+	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_SIZE;
 
 	// Recebe tamanho
-	MessageT *response = network_send_receive(rtable, &msg);
+	struct MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
 		return -1;
 	}
@@ -197,11 +197,11 @@ char **rtable_get_keys(struct rtable_t *rtable) {
 	if (rtable == NULL) return NULL;
 
 	// Criar menssagem ainda nao serializada
-	MessageT msg = MESSAGE_T__INIT;
+	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_GETKEYS;
 
 	// Receber as keys
-	MessageT *response = network_send_receive(rtable, &msg);
+	struct MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
 		return NULL;
 	}
@@ -233,11 +233,11 @@ struct entry_t **rtable_get_table(struct rtable_t *rtable) {
 	if (!rtable ) return NULL;
 
 	// Create a new message
-	MessageT msg = MESSAGE_T__INIT;
+	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_GETTABLE;
 
 	// Receber tabela
-	MessageT *response = network_send_receive(rtable, &msg);
+	struct MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
 		return NULL;
 	}
