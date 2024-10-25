@@ -75,7 +75,7 @@ struct MessageT *network_send_receive(struct rtable_t *rtable, struct MessageT *
 
 	// 2. Enviar o tamanho da mensagem (2 bytes - short)
 
-	int net_msg_size = htons(len); // Converte para network byte order
+	short net_msg_size = htons(len); // Converte para network byte order
 	if (write_all(rtable->sockfd, &net_msg_size, sizeof(net_msg_size)) != sizeof(net_msg_size)) {
 		perror("Erro ao enviar o tamanho da mensagem");
 		free(buf);
@@ -92,7 +92,7 @@ struct MessageT *network_send_receive(struct rtable_t *rtable, struct MessageT *
 	free(buf); // Liberta o buffer após o envio
 
 	// 4. Receber o tamanho da resposta (2 bytes - short)
-	int net_response_size;
+	short net_response_size;
 	if (read_all(rtable->sockfd, &net_response_size, sizeof(net_response_size)) != sizeof(net_response_size)) {
 		perror("Erro ao receber o tamanho da resposta");
 		return NULL;

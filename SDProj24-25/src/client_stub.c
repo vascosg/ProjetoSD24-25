@@ -79,14 +79,10 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 	msg.c_type = MESSAGE_T__C_TYPE__CT_ENTRY; // Codigos de tipo de informacao
 
 	//Criar nova EntryT apartir da entry_t
-	EntryT newEntry = {
-			PROTOBUF_C_MESSAGE_INIT(&entry_t__descriptor),
-			entry -> key,
-			{entry->value->datasize, block_duplicate(entry->value->data)}
-	};
-
-
-	entry_t__init(&newEntry);
+	EntryT newEntry = ENTRY_T__INIT;
+	newEntry.key = entry->key;
+	newEntry.value.data = block_duplicate(entry->value->data);
+	
 	msg.entry = &newEntry;
 
 	entry_destroy(entry);
