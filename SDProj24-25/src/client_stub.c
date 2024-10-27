@@ -1,6 +1,8 @@
 #include "../include/client_stub-private.h"
 #include "../include/htmessages.pb-c.h"
 #include "../include/client_network.h"
+#include "../include/block.h"
+#include "../include/entry.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,15 +83,15 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 	//Criar nova EntryT apartir da entry_t
 	EntryT newEntry = ENTRY_T__INIT;
 	newEntry.key = entry->key;
-	newEntry.value.data = block_duplicate(entry->value->data);
-	
-	msg.entry = &newEntry;
+	newEntry.value.len = entry->value->datasize;
+	newEntry.value.data = (uint8_t *)entry->value->data; // porque em entryT esta defenido que "ProtobufCBinaryData value;"
+	// invez de ser block_t
 
-	entry_destroy(entry);
+	msg.entry = &newEntry;
 
 	if (!msg.entry ) {
 		fprintf(stderr, "msg.entry is NULL!\n");
-				return -1; // Handle error case
+		return -1; // Handle error case
 	}
 
 	// Empacotar menssagem
@@ -103,12 +105,19 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 	message_t__pack(&msg, packed_msg);
 
 	//Enviar e receber
-	if (network_send_receive(rtable, &msg) < 0) {
-		entry_destroy(msg.entry);
+	struct MessageT *received_msg = network_send_receive(rtable, &msg);
+	if (!received_msg) {
+		fprintf(stderr, "Erro no network_send_receive\n");
+		free(packed_msg);
 		return -1;
 	}
 
-	entry_destroy(msg.entry);
+	printf("opCode da menssagem recebida: %d\n", received_msg->opcode);
+
+	message_t__free_unpacked(received_msg, NULL);
+	free(packed_msg);
+
+
 	return 0;
 
 }
@@ -119,7 +128,7 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 
 	if (!rtable || !key) {
-		return -1;
+		return NULL;
 	}
 
 	// Criar menssagem ainda nao serializada
@@ -130,12 +139,19 @@ struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 
 	struct MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
+		fprintf(stderr, "Erro no network_send_receive\n");
 		return NULL;
 	}
 
-	if (response->c_type == MESSAGE_T__C_TYPE__CT_ENTRY) { // verificar se realmente recebeu a entrada
-		struct entry_t *entry = entry_duplicate(response->entry);
-		return entry;
+	if (response->c_type == MESSAGE_T__C_TYPE__CT_VALUE) { // Verificar se realmente recebeu o block
+
+		printf("opCode da menssagem recebida: %d\n", response->opcode);
+
+		struct block_t *newBlock = block_create(response->value.len, response->value.data);  //block recebido
+
+		message_t__free_unpacked(response, NULL);
+		return newBlock;
+
 	}
 
 	return NULL;
@@ -147,7 +163,7 @@ struct block_t *rtable_get(struct rtable_t *rtable, char *key){
  */
 int rtable_del(struct rtable_t *rtable, char *key){
 
-	if (!rtable  || !key == NULL) {
+	if (!rtable  || !key ) {
 		return -1;
 	}
 
@@ -157,9 +173,14 @@ int rtable_del(struct rtable_t *rtable, char *key){
 	msg.c_type = MESSAGE_T__C_TYPE__CT_KEY;  // Codigos de tipo de informacao
 	msg.key = key;
 
-	if (network_send_receive(rtable, &msg) < 0) {
+	struct MessageT *response = network_send_receive(rtable, &msg);
+
+	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
+		fprintf(stderr, "Erro no network_send_receive\n");
 		return -1;
 	}
+
+	printf("opCode da menssagem recebida: %d\n", response->opcode);
 
 	return 0;
 

@@ -115,15 +115,42 @@ int main(int argc, char **argv) {
 			token = strtok(NULL, " "); // Próximo token
 		}
 
-		if(token_count > 0 && strcmp(tokens[0], "put") == 0){
+		if(token_count > 0 && strcmp(tokens[0], "put") == 0){ //TODO checkar a quantidade de argumentos
+
 			struct block_t *block = block_create(sizeof(tokens[2]),tokens[2]);
 			struct entry_t *entry = entry_create(tokens[1],block);
 
 			if (rt->sockfd < 0) {
-					    perror("Socket inválido");
-					    return NULL;
-				}
+				perror("Socket invalido");
+				break;
+			}
 			rtable_put(rt,entry);
+
+		} else if (token_count > 0 && strcmp(tokens[0], "get") == 0) { //TODO preparar para o caso de n encontrar a entrada
+
+			if (rt->sockfd < 0) {
+				perror("Socket invalido");
+				break;
+			}
+
+			struct block_t *block_received = rtable_get(rt, tokens[1]);
+			printf("Block size: %d\n", block_received->datasize);
+			printf("Block data: ");
+			for (int i = 0; i < block_received->datasize; i++) {
+				printf("%02x ", ((unsigned char *)block_received->data)[i]); // Imprime como hex
+			}
+			printf("\n");
+		} else if (token_count > 0 && strcmp(tokens[0], "del") == 0) {
+
+			if (rt->sockfd < 0) {
+				perror("Socket invalido");
+				return NULL;
+			}
+
+			if (rtable_del(rt,"a") != 0) {
+				printf("Erro ao eliminar entrada na tabela \n");
+			}
+
 		}
 
 		// Print stored tokens
