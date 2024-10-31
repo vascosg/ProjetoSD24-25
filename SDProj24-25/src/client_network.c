@@ -29,20 +29,20 @@ int network_connect(struct rtable_t *rtable) {
 
 	// Converte o endereço IP de string para binário
 	if (inet_pton(AF_INET, rtable->server_address, &server.sin_addr) <= 0) {
-		perror("Erro ao converter endereço IP");
+		perror("Erro ao converter endereço IP\n");
 		close(rtable->sockfd);
 		return -1;
 	}
 
 	// verifica se o socket é válido
 	if (rtable->sockfd < 0) {
-		perror("Socket inválido");
+		perror("Socket inválido\n");
 		return -1;
 	}
 
 	// Tenta conectar ao servidor
 	if (connect(rtable->sockfd, (struct sockaddr *)&server, sizeof(server)) < 0) {
-		perror("Erro ao conectar ao servidor");
+		perror("Erro ao conectar ao servidor\n");
 		close(rtable->sockfd);
 		return -1;
 	}
@@ -76,15 +76,16 @@ struct MessageT *network_send_receive(struct rtable_t *rtable, struct MessageT *
 	// 2. Enviar o tamanho da mensagem (2 bytes - short)
 
 	short net_msg_size = htons(len); // Converte para network byte order
+
 	if (write_all(rtable->sockfd, &net_msg_size, sizeof(net_msg_size)) != sizeof(net_msg_size)) {
-		perror("Erro ao enviar o tamanho da mensagem");
+		perror("Erro ao enviar o tamanho da mensagem\n");
 		free(buf);
 		return NULL;
 	}
 
 	// 3. Enviar a mensagem serializada
 	if (write_all(rtable->sockfd, buf, len) != len) {
-		perror("Erro ao enviar a mensagem");
+		perror("Erro ao enviar a mensagem\n");
 		free(buf);
 		return NULL;
 	}
@@ -94,7 +95,7 @@ struct MessageT *network_send_receive(struct rtable_t *rtable, struct MessageT *
 	// 4. Receber o tamanho da resposta (2 bytes - short)
 	short net_response_size;
 	if (read_all(rtable->sockfd, &net_response_size, sizeof(net_response_size)) != sizeof(net_response_size)) {
-		perror("Erro ao receber o tamanho da resposta");
+		perror("Erro ao receber o tamanho da resposta\n");
 		return NULL;
 	}
 	uint16_t response_size = ntohs(net_response_size); // Converte para host byte order
@@ -102,12 +103,12 @@ struct MessageT *network_send_receive(struct rtable_t *rtable, struct MessageT *
 	// 5. Receber a resposta serializada
 	uint8_t *response_buffer = malloc(response_size);
 	if (!response_buffer) {
-		perror("Erro ao alocar memória para a resposta");
+		perror("Erro ao alocar memória para a resposta\n");
 		return NULL;
 	}
 
 	if (read_all(rtable->sockfd, response_buffer, response_size) != response_size) {
-		perror("Erro ao receber a resposta");
+		perror("Erro ao receber a resposta\n");
 		free(response_buffer);
 		return NULL;
 	}
@@ -117,7 +118,7 @@ struct MessageT *network_send_receive(struct rtable_t *rtable, struct MessageT *
 	free(response_buffer); // Liberta o buffer após a deserialização
 
 	if (!response_msg) {
-		perror("Erro ao deserializar a resposta");
+		perror("Erro ao deserializar a resposta\n");
 		return NULL;
 	}
 
@@ -132,7 +133,7 @@ int network_close(struct rtable_t *rtable) {
 	if (!rtable) return -1;
 
 	if (close(rtable->sockfd) < 0) {
-		perror("Erro ao fechar o socket");
+		perror("Erro ao fechar o socket\n");
 		return -1;
 	}
 

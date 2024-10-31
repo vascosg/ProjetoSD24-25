@@ -14,49 +14,6 @@
 #define MAX_COMMAND_LEN 1024
 #define MAX_TOKENS 3
 
-/*void test_write_read_all()
-{
-    // Create a pair of connected sockets
-    int sv[2];  // sv[0] and sv[1] are the file descriptors for the socket pair
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == -1) {
-        perror("socketpair");
-        return;
-    }
-
-    const char *test_message = "Hello, world!";
-    char read_buffer[100] = {0};  // Buffer to store the read message
-
-    // Test write_all
-    size_t write_len = write_all(sv[0], test_message, strlen(test_message));
-    if (write_len != strlen(test_message)) {
-        fprintf(stderr, "write_all failed, wrote %zu bytes, expected %zu\n", write_len, strlen(test_message));
-        close(sv[0]);
-        close(sv[1]);
-        return;
-    } else {
-        printf("write_all succeeded, wrote %zu bytes\n", write_len);
-    }
-
-    // Test read_all
-    size_t read_len = read_all(sv[1], read_buffer, strlen(test_message));
-    if (read_len != strlen(test_message)) {
-        fprintf(stderr, "read_all failed, read %zu bytes, expected %zu\n", read_len, strlen(test_message));
-    } else {
-        printf("read_all succeeded, read %zu bytes\n", read_len);
-    }
-
-    // Verify that the message was received correctly
-    if (strncmp(test_message, read_buffer, strlen(test_message)) == 0) {
-        printf("Message received successfully: %s\n", read_buffer);
-    } else {
-        fprintf(stderr, "Message received incorrectly, got: %s\n", read_buffer);
-    }
-
-    // Close the sockets
-    close(sv[0]);
-    close(sv[1]);
-}*/
-
 int main(int argc, char **argv) {
 
 	if (argc != 2) {
@@ -102,7 +59,7 @@ int main(int argc, char **argv) {
 		token = strtok(command, " ");
 
 		// Verifica se o comando é 'quit'
-		if (token != NULL && strcmp(token, "quit") == 0) {
+		if (token != NULL && strcmp(token, "quit") == 0) { //TODO switch case ?
 			printf("A terminar o programa...\n");
 			break;
 		}
@@ -121,7 +78,7 @@ int main(int argc, char **argv) {
 			struct entry_t *entry = entry_create(tokens[1],block);
 
 			if (rt->sockfd < 0) {
-				perror("Socket invalido");
+				perror("Socket invalido\n");
 				break;
 			}
 			rtable_put(rt,entry);
@@ -129,7 +86,7 @@ int main(int argc, char **argv) {
 		} else if (token_count > 0 && strcmp(tokens[0], "get") == 0) { //TODO preparar para o caso de n encontrar a entrada
 
 			if (rt->sockfd < 0) {
-				perror("Socket invalido");
+				perror("Socket invalido\n");
 				break;
 			}
 
@@ -140,24 +97,80 @@ int main(int argc, char **argv) {
 				printf("%02x ", ((unsigned char *)block_received->data)[i]); // Imprime como hex
 			}
 			printf("\n");
-		} else if (token_count > 0 && strcmp(tokens[0], "del") == 0) {
+		} else if (token_count > 0 && strcmp(tokens[0], "del") == 0) { // TODO Prepatar para quando n tem a entry para deletar
 
 			if (rt->sockfd < 0) {
-				perror("Socket invalido");
-				return NULL;
+				perror("Socket invalido\n");
+				break;
 			}
 
-			if (rtable_del(rt,"a") != 0) {
+			if (rtable_del(rt,tokens[1]) != 0) {
 				printf("Erro ao eliminar entrada na tabela \n");
 			}
 
-		}
+		} else if (token_count > 0 && strcmp(tokens[0], "size") == 0) {
 
-		// Print stored tokens
-		printf("Tokens Guardados:\n");
-		for (int i = 0; i < token_count; i++) {
-			printf("Token[%d]: %s\n", i, tokens[i]);
-			free(tokens[i]); // Liberta memória após uso
+			if (rt->sockfd < 0) {
+				perror("Socket invalido\n");
+				break;
+			}
+
+			int size = rtable_size(rt);
+
+			if (size == -1) {
+				printf("Erro ao obter o numero de elementos na tabela \n");
+			}
+			printf("Numero de elementos na tabela: %d\n",size);
+
+		} else if (token_count > 0 && strcmp(tokens[0], "getkeys") == 0) { //TODO da erro no list free keys tiver 5 elementos...
+
+			if (rt->sockfd < 0) {
+				perror("Socket invalido\n");
+				break;
+			}
+
+			size_t num_keys = rtable_size(rt);
+			char **keys = rtable_get_keys(rt);
+
+			if (!keys) {
+				printf("Erro ao obter as chaves\n");
+				break;
+			} else {
+				for (size_t i = 0; i < num_keys; i++) {
+					printf("Key[%zu]: %s\n", i, keys[i]);
+				}
+
+				rtable_free_keys(keys);
+			}
+
+
+		} else if (token_count > 0 && strcmp(tokens[0], "gettable") == 0) {
+
+			if (rt->sockfd < 0) {
+				perror("Socket invalido\n");
+				break;
+			}
+
+			struct entry_t ** table_entries = rtable_get_table(rt);
+
+			if(!table_entries) {
+				printf("Erro ao obter as entradas\n");
+			} else {
+				printf("A imprimir as entradas ...\n");
+
+				size_t num_entries = rtable_size(rt);
+
+				for (size_t i = 0; i < num_entries; i++) {
+					struct entry_t *entry = table_entries[i];
+					if (entry) {
+						printf("Entry %zu:\n", i);
+						printf("  Key: %s\n", entry->key);
+					} else {
+						printf("Entry %zu is NULL\n", i);
+					}
+				}
+			}
+
 		}
 
 	}

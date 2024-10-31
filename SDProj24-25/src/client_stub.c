@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <inttypes.h>
 
 /* Função para estabelecer uma associação entre o cliente e o servidor,
  * em que address_port é uma string no formato <hostname>:<port>.
@@ -139,6 +140,7 @@ struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 
 	struct MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
+		message_t__free_unpacked(response, NULL);
 		fprintf(stderr, "Erro no network_send_receive\n");
 		return NULL;
 	}
@@ -176,6 +178,7 @@ int rtable_del(struct rtable_t *rtable, char *key){
 	struct MessageT *response = network_send_receive(rtable, &msg);
 
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
+		message_t__free_unpacked(response, NULL);
 		fprintf(stderr, "Erro no network_send_receive\n");
 		return -1;
 	}
@@ -190,19 +193,24 @@ int rtable_del(struct rtable_t *rtable, char *key){
  */
 int rtable_size(struct rtable_t *rtable) {
 
-	if (rtable == NULL) return -1;
+	if (!rtable) return -1;
 
 	// Criar menssagem ainda nao serializada
 	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_SIZE;
+	msg.c_type = MESSAGE_T__C_TYPE__CT_NONE;
 
-	// Recebe tamanho
+	// Recebe menssagem
 	struct MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
+		message_t__free_unpacked(response, NULL);
 		return -1;
 	}
 
-	return response->n_entries; // TODO isto e o numero de entradas ?? talvez
+	printf("opCode da menssagem recebida: %d\n", response->opcode);
+	message_t__free_unpacked(response, NULL);
+
+	return response->result; // TODO isto e o numero de entradas ?? talvez
 }
 
 /* Retorna um array de char* com a cópia de todas as keys da tabela,
@@ -211,17 +219,21 @@ int rtable_size(struct rtable_t *rtable) {
  */
 char **rtable_get_keys(struct rtable_t *rtable) {
 
-	if (rtable == NULL) return NULL;
+	if (!rtable) return NULL;
 
 	// Criar menssagem ainda nao serializada
 	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_GETKEYS;
+	msg.c_type = MESSAGE_T__C_TYPE__CT_NONE;
 
 	// Receber as keys
 	struct MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
+		message_t__free_unpacked(response, NULL);
 		return NULL;
 	}
+
+	printf("opCode da menssagem recebida: %d\n", response->opcode);
 
 	// Alocar memoria  para as keys
 	char **keys = malloc(sizeof(char *) * response->n_keys);
@@ -252,6 +264,7 @@ struct entry_t **rtable_get_table(struct rtable_t *rtable) {
 	// Create a new message
 	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_GETTABLE;
+	msg.c_type = MESSAGE_T__C_TYPE__CT_NONE;
 
 	// Receber tabela
 	struct MessageT *response = network_send_receive(rtable, &msg);
@@ -259,13 +272,7 @@ struct entry_t **rtable_get_table(struct rtable_t *rtable) {
 		return NULL;
 	}
 
-	// Aloca memoria para
-	struct entry_t **entries = malloc(sizeof(struct entry_t *) * response->n_entries);
-	for (size_t i = 0; i < response->n_entries; i++) {
-		entries[i] = entry_duplicate(response->entries[i]);
-	}
-
-	return entries;
+	return response->entries;
 }
 
 /* Liberta a memória alocada por rtable_get_table().

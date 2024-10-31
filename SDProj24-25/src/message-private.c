@@ -9,7 +9,7 @@ MessageT;
 
 size_t write_all(int sock, const void *buf, size_t len)
 {
-
+	const char *p = buf;
 	size_t buffersize = len;
 	while (len > 0)
 	{
