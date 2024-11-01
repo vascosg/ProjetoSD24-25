@@ -62,35 +62,35 @@ int network_main_loop(int listening_socket, struct table_t *table){ //TODO skele
 	struct sockaddr_in client_addr;
 	socklen_t client_len= sizeof(client_addr);
 
-	while (1) {
-		// Aceita uma conexão de cliente
-		client_socket = accept(listening_socket, (struct sockaddr *)&client_addr, &client_len);
-		if (client_socket < 0) {
-			perror("Erro ao aceitar conexão\n");
-			return -1;
-		}
 
-		// Recebe uma mensagem do cliente
-		struct MessageT *request = network_receive(client_socket);
-		if (!request) {
-			perror("Erro ao receber mensagem\n");
+	while ((client_socket = accept(listening_socket,(struct sockaddr *) &client_addr, &client_len)) != -1) {
+
+		printf("Cliente conectado!\n");
+
+		while(1) {
+			// Recebe uma mensagem do cliente
+			struct MessageT *request = network_receive(client_socket);
+			if (!request) {
+				perror("Erro ao receber mensagem\n");
+				message_t__free_unpacked(request, NULL);
+				close(client_socket);
+				return -1;
+			}
+
+			// Processa a mensagem com a tabela e o skeleton (implementação depende do contexto)
+			int invoke_result = invoke(request, table);  // Supõe que esta função exista
+
+			// Envia a resposta ao cliente
+			if (network_send(client_socket, request) < 0) {
+				perror("Erro ao enviar mensagem\n");
+				message_t__free_unpacked(request, NULL);
+				close(client_socket);
+				return -1;
+			}
+
 			message_t__free_unpacked(request, NULL);
-			close(client_socket);
-			return -1;
 		}
-
-		// Processa a mensagem com a tabela e o skeleton (implementação depende do contexto)
-		int invoke_result = invoke(request, table);  // Supõe que esta função exista
-
-		// Envia a resposta ao cliente
-		if (network_send(client_socket, request) < 0) {
-			perror("Erro ao enviar mensagem\n");
-			message_t__free_unpacked(request, NULL);
-			close(client_socket);
-			return -1;
-		}
-
-		message_t__free_unpacked(request, NULL);
+		close(client_socket);
 	}
 
 	return 0;

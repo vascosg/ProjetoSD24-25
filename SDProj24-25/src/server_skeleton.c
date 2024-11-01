@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../include/entry.h"
 #include "../include/server_skeleton.h"
 #include "../include/table.h"
 #include "../include/htmessages.pb-c.h"
@@ -37,7 +38,7 @@ int invoke(struct MessageT *msg, struct table_t *table){
 	if(msg->opcode == MESSAGE_T__OPCODE__OP_PUT) { // fazer o put
 
 		// Criar o bloco apartir na info na msg
-		struct block_t *bloco = block_create(msg->entry->value.len, msg->entry->value.data);
+		struct block_t *bloco = block_create(msg->entry->value.len, msg->entry->value.data); //TODO verificar se e mesmo assim que se passa a data
 		if (!bloco) {
 			printf("Erro ao criar o bloco no put\n");
 			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
@@ -57,7 +58,31 @@ int invoke(struct MessageT *msg, struct table_t *table){
 		//Se tudo deu certo
 		msg->opcode = MESSAGE_T__OPCODE__OP_PUT+1;
 		msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
-        printf("Put realizado com sucesso!\n");
+		printf("Put realizado com sucesso!\n");
+
+	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_GET) {
+
+		//Obter entrada da tabela
+		struct entry_t* entry = table_get(table, msg->key);
+		if(!entry) {
+			printf("Erro ao obter a entrada da tabela\n");
+			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
+			msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+			return -1;
+		}
+
+		EntryT newEntry = ENTRY_T__INIT;
+		msg->opcode = MESSAGE_T__OPCODE__OP_GET + 1;
+		msg->c_type = MESSAGE_T__C_TYPE__CT_VALUE;
+
+		// Limpar o campo da key
+		if (msg->key != NULL && msg->key != protobuf_c_empty_string) {
+			free(msg->key);
+			msg->key = NULL;  // Definir para NULL para indicar que não será usado
+		}
+		newEntry.value.len = entry->value->datasize;
+		newEntry.value.data = (uint8_t *)entry->value->data; //TODO verificar se e mesmo assim que se passa a data
+		printf("Get realizado com sucesso!\n");
 	}
 	return 0;
 }
