@@ -16,6 +16,6 @@ int server_skeleton_destroy(struct table_t *table);
 
 /* Executa na tabela table a operação indicada pelo opcode contido em msg
 * e utiliza a mesma estrutura MessageT para devolver o resultado. * Retorna 0 (OK) ou -1 em caso de erro. */ 
-int invoke(MessageT *msg, struct table_t *table);
+int invoke(struct MessageT *msg, struct table_t *table);
 
 #endif

@@ -28,14 +28,14 @@ int network_main_loop(int listening_socket, struct table_t *table);
 * reservando a memória necessária para a estrutura MessageT.
 * Retorna a mensagem com o pedido ou NULL em caso de erro.
 */
-MessageT *network_receive(int client_socket);
+struct MessageT *network_receive(int client_socket);
 
 /* A função network_send() deve:
 * - Serializar a mensagem de resposta contida em msg;
 * - Enviar a mensagem serializada, através do client_socket.
 * Retorna 0 (OK) ou -1 em caso de erro.
 */
-int network_send(int client_socket, MessageT *msg);
+int network_send(int client_socket, struct MessageT *msg);
 
 /* Liberta os recursos alocados por server_network_init(), nomeadamente
 * fechando o socket passado como argumento.

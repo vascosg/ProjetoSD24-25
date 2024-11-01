@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
 	fflush(stdout);  // Garantir que a mensagem seja exibida imediatamente
 
 	char command[MAX_COMMAND_LEN];
-	char *tokens[MAX_TOKENS]; // Array to store pointers to tokens
+	char *tokens[MAX_TOKENS]; // Array para guardar os pointers
 	int token_count;
 	struct rtable_t *rt = rtable_connect(argv[1]);
 
