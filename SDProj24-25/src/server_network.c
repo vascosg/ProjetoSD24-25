@@ -4,12 +4,10 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include "table.h"
-#include "htmessages.pb-c.h"
+#include "../include/table.h"
+#include "../include/htmessages.pb-c.h"
 #include "../include/server_network.h"
 
-
-#define MAX_PENDING 5
 #define BUFFER_SIZE 1024
 
 /* Função para preparar um socket de receção de pedidos de ligação
@@ -29,7 +27,6 @@ int server_network_init(short port){
 	}
 
 	// Configuração do endereço do servidor
-	memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = INADDR_ANY;
 	server_addr.sin_port = htons(port);
@@ -42,7 +39,7 @@ int server_network_init(short port){
 	}
 
 	// Coloca o socket em modo de escuta para aceitar conexões
-	if (listen(server_socket, MAX_PENDING) < 0) {
+	if (listen(server_socket, 0) < 0) {
 		perror("Erro ao escutar no socket");
 		close(server_socket);
 		return -1;
@@ -63,7 +60,7 @@ int server_network_init(short port){
 int network_main_loop(int listening_socket, struct table_t *table){ //TODO skeleton init ? é feito no server hastable
 	int client_socket;
 	struct sockaddr_in client_addr;
-	socklen_t client_len = sizeof(client_addr);
+	socklen_t client_len= sizeof(client_addr);
 
 	while (1) {
 		// Aceita uma conexão de cliente
@@ -77,24 +74,23 @@ int network_main_loop(int listening_socket, struct table_t *table){ //TODO skele
 		struct MessageT *request = network_receive(client_socket);
 		if (!request) {
 			perror("Erro ao receber mensagem\n");
+			message_t__free_unpacked(request, NULL);
 			close(client_socket);
 			return -1;
 		}
 
 		// Processa a mensagem com a tabela e o skeleton (implementação depende do contexto)
-		struct MessageT *response = invoke(request, table);  // Supõe que esta função exista
+		int invoke_result = invoke(request, table);  // Supõe que esta função exista
 
 		// Envia a resposta ao cliente
-		if (network_send(client_socket, response) < 0) {
+		if (network_send(client_socket, request) < 0) {
 			perror("Erro ao enviar mensagem\n");
+			message_t__free_unpacked(request, NULL);
 			close(client_socket);
 			return -1;
 		}
 
-		// Libera recursos e fecha conexão com o cliente
-		message_free(request);   // Supõe que message_free libere a memória de MessageT
-		message_free(response);  // Libera a resposta
-		close(client_socket);
+		message_t__free_unpacked(request, NULL);
 	}
 
 	return 0;
@@ -108,7 +104,7 @@ int network_main_loop(int listening_socket, struct table_t *table){ //TODO skele
  */
 struct MessageT *network_receive(int client_socket){
 
-	// 4. Receber o tamanho da resposta (2 bytes - short)
+	// 1. Receber o tamanho da resposta (2 bytes - short)
 	short net_response_size;
 	if (read_all(client_socket, &net_response_size, sizeof(net_response_size)) != sizeof(net_response_size)) {
 		perror("Erro ao receber o tamanho da resposta\n");
@@ -116,7 +112,7 @@ struct MessageT *network_receive(int client_socket){
 	}
 	uint16_t response_size = ntohs(net_response_size); // Converte para host byte order
 
-	// 5. Receber a resposta serializada
+	// 2. Receber a resposta serializada
 	uint8_t *response_buffer = malloc(response_size);
 	if (!response_buffer) {
 		perror("Erro ao alocar memória para a resposta\n");
@@ -129,7 +125,7 @@ struct MessageT *network_receive(int client_socket){
 		return NULL;
 	}
 
-	// 6. Deserializar a resposta
+	// 3. Deserializar a resposta
 	struct MessageT *response_msg = message_t__unpack(NULL, response_size, response_buffer);
 	free(response_buffer); // Liberta o buffer após a deserialização
 
@@ -138,7 +134,7 @@ struct MessageT *network_receive(int client_socket){
 		return NULL;
 	}
 
-	// 7. Retorna a mensagem de resposta
+	// 4. Retorna a mensagem de resposta
 	return response_msg;
 }
 

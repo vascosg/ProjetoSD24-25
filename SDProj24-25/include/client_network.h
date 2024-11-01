@@ -23,7 +23,7 @@ int network_connect(struct rtable_t *rtable);
 * - Tratar de forma apropriada erros de comunicação;
 * - Retornar a mensagem de-serializada ou NULL em caso de erro.
 */
-MessageT *network_send_receive(struct rtable_t *rtable, MessageT *msg);
+struct MessageT *network_send_receive(struct rtable_t *rtable, struct MessageT *msg);
 
 /* Fecha a ligação estabelecida por network_connect().
 * Retorna 0 (OK) ou -1 (erro).
