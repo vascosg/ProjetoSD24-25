@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 
 	// Loop principal
 	while (1) {
-		printf("Insira um novo comando: ");
+		printf("Command: ");
 
 		// Lê o comando do utilizador
 		if (fgets(command, MAX_COMMAND_LEN, stdin) == NULL) {
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 
 		// Verifica se o comando é 'quit'
 		if (token != NULL && strcmp(token, "quit") == 0) { //TODO switch case ?
-			printf("A terminar o programa...\n");
+			printf("Bye, bye!\n");
 			break;
 		}
 
@@ -95,12 +95,7 @@ int main(int argc, char **argv) {
 				printf("Erro ao obter o bloco\n");
 				continue;
 			}
-			printf("Block size: %d\n", block_received->datasize);
-			printf("Block data: ");
-			for (int i = 0; i < block_received->datasize; i++) {
-				printf("%02x ", ((unsigned char *)block_received->data)[i]); // Imprime como hex
-			}
-			printf("\n");
+
 		} else if (token_count > 0 && strcmp(tokens[0], "del") == 0) { // TODO Prepatar para quando n tem a entry para deletar
 
 			if (rt->sockfd < 0) {
@@ -111,6 +106,8 @@ int main(int argc, char **argv) {
 			if (rtable_del(rt,tokens[1]) != 0) {
 				printf("Erro ao eliminar entrada na tabela \n");
 			}
+
+			printf("Entry removed\n");
 
 		} else if (token_count > 0 && strcmp(tokens[0], "size") == 0) {
 
@@ -124,7 +121,7 @@ int main(int argc, char **argv) {
 			if (size == -1) {
 				printf("Erro ao obter o numero de elementos na tabela \n");
 			}
-			printf("Numero de elementos na tabela: %d\n",size);
+			printf("Table size: %d\n",size);
 
 		} else if (token_count > 0 && strcmp(tokens[0], "getkeys") == 0) { //TODO da erro no list free keys tiver 5 elementos...
 
@@ -141,10 +138,9 @@ int main(int argc, char **argv) {
 				break;
 			} else {
 				for (size_t i = 0; i < num_keys; i++) {
-					printf("Key[%zu]: %s\n", i, keys[i]);
+					printf("%s\n", keys[i]);
 				}
 
-				rtable_free_keys(keys);
 			}
 
 
@@ -159,20 +155,6 @@ int main(int argc, char **argv) {
 
 			if(!table_entries) {
 				printf("Erro ao obter as entradas\n");
-			} else {
-				printf("A imprimir as entradas ...\n");
-
-				size_t num_entries = rtable_size(rt);
-
-				for (size_t i = 0; i < num_entries; i++) {
-					struct entry_t *entry = table_entries[i];
-					if (entry) {
-						printf("Entry %zu:\n", i);
-						printf("  Key: %s\n", entry->key);
-					} else {
-						printf("Entry %zu is NULL\n", i);
-					}
-				}
 			}
 
 		}

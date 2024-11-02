@@ -3,6 +3,7 @@
 #include "../include/client_network.h"
 #include "../include/block.h"
 #include "../include/entry.h"
+#include "../include/list.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -114,7 +115,6 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 		return -1;
 	}
 
-	printf("opCode da menssagem recebida: %d\n", received_msg->opcode);
 
 	message_t__free_unpacked(received_msg, NULL);
 	free(packed_msg);
@@ -149,9 +149,9 @@ struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 
 	if (response->c_type == MESSAGE_T__C_TYPE__CT_VALUE) { // Verificar se realmente recebeu o block
 
-		printf("opCode da menssagem recebida: %d\n", response->opcode);
-
-		struct block_t *newBlock = block_create(response->value.len, response->value.data);  //block recebido
+		char *new_str = (char *)response->value.data;
+		printf("%s\n", new_str);
+		struct block_t *newBlock = block_create(response->value.len, response->value.data);
 
 		message_t__free_unpacked(response, NULL);
 		return newBlock;
@@ -185,8 +185,6 @@ int rtable_del(struct rtable_t *rtable, char *key){
 		return -1;
 	}
 
-	printf("opCode da menssagem recebida: %d\n", response->opcode);
-
 	return 0;
 
 }
@@ -208,8 +206,6 @@ int rtable_size(struct rtable_t *rtable) {
 		message_t__free_unpacked(response, NULL);
 		return -1;
 	}
-
-	printf("opCode da menssagem recebida: %d\n", response->opcode);
 	message_t__free_unpacked(response, NULL);
 
 	return response->result; // TODO isto e o numero de entradas ?? talvez
@@ -235,7 +231,6 @@ char **rtable_get_keys(struct rtable_t *rtable) {
 		return NULL;
 	}
 
-	printf("opCode da menssagem recebida: %d\n", response->opcode);
 
 	// Alocar memoria  para as keys
 	char **keys = malloc(sizeof(char *) * response->n_keys);
@@ -274,7 +269,16 @@ struct entry_t **rtable_get_table(struct rtable_t *rtable) {
 		return NULL;
 	}
 
-	return response->entries;
+	size_t n = response->n_entries;
+	EntryT **entries = response->entries;
+	struct entry_t ** s_entries = malloc(sizeof(struct entry_t)*n);
+
+	for (size_t i = 0; i < n; i++) {
+		printf("%s :: %s\n",entries[i]->key,(char *) entries[i]->value.data);
+		s_entries[i] = entry_create(entries[i]->key, block_create(entries[i]->value.len,entries[i]->value.data));
+	}
+
+	return s_entries; // Deveriam ser entry_t**
 }
 
 /* Liberta a memória alocada por rtable_get_table().
