@@ -1,4 +1,4 @@
-/*#include <stdio.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "../include/client_network.h"
@@ -91,6 +91,10 @@ int main(int argc, char **argv) {
 			}
 
 			struct block_t *block_received = rtable_get(rt, tokens[1]);
+			if (!block_received) {
+				printf("Erro ao obter o bloco\n");
+				continue;
+			}
 			printf("Block size: %d\n", block_received->datasize);
 			printf("Block data: ");
 			for (int i = 0; i < block_received->datasize; i++) {
@@ -177,4 +181,3 @@ int main(int argc, char **argv) {
 
 	return 0;
 }
-*/

@@ -31,7 +31,8 @@ int server_skeleton_destroy(struct table_t *table){ // TODO outros recursos ?
 }
 
 /* Executa na tabela table a operação indicada pelo opcode contido em msg
- * e utiliza a mesma estrutura MessageT para devolver o resultado. * Retorna 0 (OK) ou -1 em caso de erro. */
+ * e utiliza a mesma estrutura MessageT para devolver o resultado. 
+ * Retorna 0 (OK) ou -1 em caso de erro. */
 int invoke(struct MessageT *msg, struct table_t *table){
 
 	if (!msg  || !table ) return -1;
@@ -50,7 +51,7 @@ int invoke(struct MessageT *msg, struct table_t *table){
 		// Colocar a entrada na tabela
 		int result = table_put(table, msg->entry->key, bloco);
 		if (result < 0) {
-			printf("Erro ao azer o put na tabela\n");
+			printf("Erro ao fazer o put na tabela\n");
 			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
 			msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
 			return -1;

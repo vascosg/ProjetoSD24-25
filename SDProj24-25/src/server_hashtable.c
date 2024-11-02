@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
         printf("Aguardando conexão de um cliente...\n");
 
         if (network_main_loop(server_socket, table) < 0) {
-            fprintf(stderr, "Erro no loop de atendimento ao cliente.\n");
+            printf("Erro no loop de atendimento ao cliente.\n");
             break;
         }
 

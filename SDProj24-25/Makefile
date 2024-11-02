@@ -5,7 +5,7 @@ INC_DIR = include
 
 TEST_SRC_FILES = client_hashtable server_hashtable
 
-MODULES = block entry list serialization table table-private client_hashtable client_network client_stub server_hashtable server_network server_skeleton htmessages.pb-c message-private
+MODULES = block entry list serialization table table-private client_network client_stub server_network server_skeleton htmessages.pb-c message-private
 
 TEST_EXECUTABLES = $(addprefix $(BIN_DIR)/, $(TEST_SRC_FILES))
 

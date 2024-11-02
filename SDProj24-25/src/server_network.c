@@ -82,6 +82,15 @@ int network_main_loop(int listening_socket, struct table_t *table){ //TODO skele
 			// Processa a mensagem com a tabela e o skeleton (implementação depende do contexto)
 			int invoke_result = invoke(request, table);  // Supõe que esta função exista
 
+			// Verifica se ocorreu um erro
+			/*if (invoke_result < 0) {
+				perror("Erro ao processar a mensagem\n");
+				message_t__free_unpacked(request, NULL);
+				close(client_socket);
+				return -1;
+			}*/
+
+			
 			// Envia a resposta ao cliente
 			if (network_send(client_socket, request) < 0) {
 				perror("Erro ao enviar mensagem\n");

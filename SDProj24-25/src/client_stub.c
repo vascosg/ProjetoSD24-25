@@ -47,6 +47,7 @@ struct rtable_t *rtable_connect(char *address_port) {
 
 	if(network_connect(rtable) == -1) {
 		printf("Falha ao conectar ao servidor.");
+		return NULL;
 	}
 
 	return rtable;
@@ -129,6 +130,7 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 
 	if (!rtable || !key) {
+		printf("rtable ou key e NULL\n");
 		return NULL;
 	}
 
@@ -139,7 +141,7 @@ struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 	msg.key = key;
 
 	struct MessageT *response = network_send_receive(rtable, &msg);
-	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
+	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
 		fprintf(stderr, "Erro no network_send_receive\n");
 		return NULL;
