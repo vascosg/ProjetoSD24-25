@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include "../include/server_skeleton.h"
+#include "../include/message-private.h"
 #include "../include/table.h"
 #include "../include/htmessages.pb-c.h"
 #include "../include/server_network.h"

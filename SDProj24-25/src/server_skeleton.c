@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../include/list.h"
 #include "../include/entry.h"
 #include "../include/server_skeleton.h"
 #include "../include/table.h"
@@ -63,15 +64,14 @@ int invoke(struct MessageT *msg, struct table_t *table){
 	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_GET) {
 
 		//Obter entrada da tabela
-		struct entry_t* entry = table_get(table, msg->key);
-		if(!entry) {
+		struct block_t* block = table_get(table, msg->key);
+		if(!block) {
 			printf("Erro ao obter a entrada da tabela\n");
 			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
 			msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
 			return -1;
 		}
 
-		EntryT newEntry = ENTRY_T__INIT;
 		msg->opcode = MESSAGE_T__OPCODE__OP_GET + 1;
 		msg->c_type = MESSAGE_T__C_TYPE__CT_VALUE;
 
@@ -80,9 +80,128 @@ int invoke(struct MessageT *msg, struct table_t *table){
 			free(msg->key);
 			msg->key = NULL;  // Definir para NULL para indicar que não será usado
 		}
-		newEntry.value.len = entry->value->datasize;
-		newEntry.value.data = (uint8_t *)entry->value->data; //TODO verificar se e mesmo assim que se passa a data
+		msg->value.len = block->datasize;
+		msg->value.data = (uint8_t *)block->data; //TODO verificar se e mesmo assim que se passa a data
 		printf("Get realizado com sucesso!\n");
+
+	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_DEL) {
+
+		//Remove a entrada da tabela
+		int result = table_remove(table, msg->key);
+		if (result < 0) {
+			printf("Erro ao eliminar entrada na tabela\n");
+			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
+			msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+		}
+
+		// Limpar o campo da key
+		if (msg->key != NULL && msg->key != protobuf_c_empty_string) {
+			free(msg->key);
+			msg->key = NULL;  // Definir para NULL para indicar que não será usado
+		}
+
+		msg->opcode = MESSAGE_T__OPCODE__OP_DEL + 1;
+		msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+
+		printf("Del realizado com sucesso!\n");
+
+	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_SIZE) {
+
+		//Obtem o tamanho da tabela
+		int size = table_size(table);
+		if(size < 0 ) {
+			printf("Erro ao eliminar entrada na tabela\n");
+			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
+			msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+			return -1;
+		}
+
+		msg->result = (int32_t)size;
+		msg->opcode = MESSAGE_T__OPCODE__OP_SIZE + 1;
+		msg->c_type = MESSAGE_T__C_TYPE__CT_RESULT;
+
+		printf("Size realizado com sucesso!\n");
+
+	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_GETKEYS) {
+
+		// Obtem chaves da tabela
+		char ** keys = table_get_keys(table);
+		if (!keys) {
+			printf("Erro ao obter as chaves da tabela\n");
+			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
+			msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+			return -1;
+		}
+
+		msg->n_keys = (size_t) table_size(table); //TODO mudar no cliente porque lá ele n usa esta valor para saber o numero de keys acho
+		msg->keys = keys; // TODO Libertar estas keys ? onde ? alocar espaço para elas
+		msg->opcode = MESSAGE_T__OPCODE__OP_GETKEYS + 1;
+		msg->c_type = MESSAGE_T__C_TYPE__CT_KEYS;
+
+		printf("GetKeys realizado com sucesso!\n");
+
+	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_GETTABLE) {
+
+		// Obter todas as chaves da tabela
+		char **keys = table_get_keys(table);
+		if (!keys) {
+			printf("Erro ao obter as chaves da tabela no getTable\n");
+			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
+			msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+			return -1;
+		}
+
+		// Determinar quantas chaves foram obtidas
+		size_t num_keys = table_size(table);
+		msg->n_entries = (size_t)num_keys;
+		msg->entries = malloc(num_keys * sizeof(EntryT*)); //TODO Limpar isto
+
+		if (!msg->entries) {
+			printf("Erro ao alocar espaço para entradas\n");
+			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
+			msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+			list_free_keys(keys);
+			return -1;
+		}
+
+		for (size_t i = 0; i < num_keys; i++) {
+			// Obter o bloco correspondente à chave atual
+			struct block_t *block = table_get(table, keys[i]);
+			if (!block) {
+				printf("Erro ao obter o bloco para a chave %s\n", keys[i]);
+				list_free_keys(keys);
+				return -1;
+			}
+
+			// Criar a entrada com a chave e o bloco
+			struct entry_t *entry = entry_create(keys[i], block);
+			if (!entry) {
+				printf("Erro ao criar a entrada para a chave %s\n", keys[i]);
+				list_free_keys(keys);
+				free(msg->entries); // Liberar entradas alocadas antes de retornar
+				return -1;
+			}
+
+			EntryT *newEntry = malloc(sizeof(EntryT)); // Alocar espaço para a nova entrada
+			if (!newEntry) {
+				printf("Erro ao alocar memória para a nova entrada\n");
+				list_free_keys(keys);
+				free(msg->entries); // Liberar entradas alocadas antes de retornar
+				return -1;
+			}
+
+			entry_t__init(newEntry); // Inicializar a nova entrada
+			newEntry->key = strdup(entry->key); // Copiar a chave para a nova entrada
+			newEntry->value.len = entry->value->datasize; // Definir o tamanho do valor
+			newEntry->value.data = (uint8_t *)entry->value->data;
+			// Adicionar a entrada à mensagem
+			msg->entries[i] = newEntry;
+		}
+
+		msg->opcode = MESSAGE_T__OPCODE__OP_GETTABLE + 1;
+		msg->c_type = MESSAGE_T__C_TYPE__CT_TABLE;
+		printf("GetTable realizado com sucesso!\n");
+		list_free_keys(keys);
 	}
 	return 0;
 }
