@@ -23,13 +23,13 @@ int keyArray_to_buffer(char **keys, char **keys_buf) {
     }
 
     int nkeys = 0;
-    //Calcula o número de chaves
+    // Calcula o número de chaves
     while (keys[nkeys] != NULL) {
         nkeys++;
     }
 
     // Calcula o espaço requerido do buffer
-    int buffer_size = sizeof(int); // PAra nkeys (int)
+    int buffer_size = sizeof(int); // Para nkeys (int)
     for (int i = 0; i < nkeys; i++) {
         buffer_size += strlen(keys[i]) + 1; // +1 para incluir o null no final
     }
@@ -83,7 +83,7 @@ char **buffer_to_keyArray(char *keys_buf) {
     char **keys = (char **)malloc((nkeys + 1) * sizeof(char *)); // +1 termina null
     if (!keys) return NULL; // Falha ao alocar memoria para a lista de chaves
 
-    // Descerializar cada string
+    // Deserializar cada string
     for (int i = 0; i < nkeys; i++) {
         int len = strlen(keys_buf) + 1; // Incluir o null no fim
         keys[i] = (char *)malloc(len);

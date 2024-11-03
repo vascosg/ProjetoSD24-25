@@ -5,8 +5,6 @@
 #include "../include/entry.h"
 #include "../include/block.h"
 #include "../include/client_stub-private.h"
-#include <stdio.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <errno.h>
@@ -59,7 +57,7 @@ int main(int argc, char **argv) {
 		token = strtok(command, " ");
 
 		// Verifica se o comando é 'quit'
-		if (token != NULL && strcmp(token, "quit") == 0) { //TODO switch case ?
+		if (token != NULL && strcmp(token, "quit") == 0) { //TODO switch case ? yesss
 			printf("Bye, bye!\n");
 			break;
 		}
@@ -72,7 +70,12 @@ int main(int argc, char **argv) {
 			token = strtok(NULL, " "); // Próximo token
 		}
 
-		if(token_count > 0 && strcmp(tokens[0], "put") == 0){ //TODO checkar a quantidade de argumentos
+		if(token_count > 0 && strcmp(tokens[0], "put") == 0){
+
+			if (token_count < 3 || tokens[1] == NULL || tokens[2] == NULL) { // Verifica se o comando put tem os argumentos necessários
+				printf("Argumentos insuficientes para o comando put\n");
+				continue;
+			}
 
 			struct block_t *block = block_create(sizeof(tokens[2]),tokens[2]);
 			struct entry_t *entry = entry_create(tokens[1],block);

@@ -156,7 +156,7 @@ struct MessageT *network_receive(int client_socket){
  */
 int network_send(int client_socket, struct MessageT *msg){
 
-	if (!client_socket || !msg) return -1;
+	if (client_socket < 0 || !msg) return -1;
 
 	// 1. Serializar a mensagem
 	unsigned int len = message_t__get_packed_size(msg); // Tamanho da mensagem serializada
@@ -168,6 +168,11 @@ int network_send(int client_socket, struct MessageT *msg){
 	}
 
 	int msg_len = message_t__pack(msg, buf); // Serializa a mensagem para o buffer
+	if (msg_len != len) { // verifica se o tamanho da mensagem serializada é o esperado
+		perror("Erro ao serializar a mensagem\n");
+		free(buf);
+		return -1;
+	}
 
 	// 2. Enviar o tamanho da mensagem (2 bytes - short)
 

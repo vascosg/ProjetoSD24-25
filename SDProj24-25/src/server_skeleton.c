@@ -7,9 +7,12 @@
 #include "../include/table.h"
 #include "../include/htmessages.pb-c.h"
 
-/* Inicia o skeleton da tabela. * O main() do servidor deve chamar esta função antes de poder usar a * função invoke(). O parâmetro n_lists define o número de listas a
+/* Inicia o skeleton da tabela. 
+ * O main() do servidor deve chamar esta função antes de poder usar a 
+ * função invoke(). O parâmetro n_lists define o número de listas a
  * serem usadas pela tabela mantida no servidor.
- * Retorna a tabela criada ou NULL em caso de erro. */
+ * Retorna a tabela criada ou NULL em caso de erro. 
+ */
 struct table_t *server_skeleton_init(int n_lists){
 
 	struct table_t *table = table_create(n_lists);
@@ -22,25 +25,27 @@ struct table_t *server_skeleton_init(int n_lists){
 
 /* Liberta toda a memória ocupada pela tabela e todos os recursos
  * e outros recursos usados pelo skeleton.
- * Retorna 0 (OK) ou -1 em caso de erro. */
-int server_skeleton_destroy(struct table_t *table){ // TODO outros recursos ?
+ * Retorna 0 (OK) ou -1 em caso de erro.
+ */
+int server_skeleton_destroy(struct table_t *table){ // TODO outros recursos ? acho q é só isto
 
-	if (!table ) return -1;
+	if (!table) return -1;
 	table_destroy(table);
 	return 0;
 }
 
 /* Executa na tabela table a operação indicada pelo opcode contido em msg
- * e utiliza a mesma estrutura MessageT para devolver o resultado. 
- * Retorna 0 (OK) ou -1 em caso de erro. */
+ * e utiliza a mesma estrutura MessageT para devolver o resultado.
+ * Retorna 0 (OK) ou -1 em caso de erro.
+ */
 int invoke(struct MessageT *msg, struct table_t *table){
 
-	if (!msg  || !table ) return -1;
+	if (!msg  || !table) return -1;
 
 	if(msg->opcode == MESSAGE_T__OPCODE__OP_PUT) { // fazer o put
 
-		// Criar o bloco apartir na info na msg
-		struct block_t *bloco = block_create(msg->entry->value.len, msg->entry->value.data); //TODO verificar se e mesmo assim que se passa a data
+		// Criar o bloco a partir da info na msg
+		struct block_t *bloco = block_create(msg->entry->value.len, msg->entry->value.data);
 		if (!bloco) {
 			printf("Erro ao criar o bloco no put\n");
 			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
@@ -64,7 +69,7 @@ int invoke(struct MessageT *msg, struct table_t *table){
 
 	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_GET) {
 
-		//Obter entrada da tabela
+		// Obter entrada da tabela
 		struct block_t* block = table_get(table, msg->key);
 		if(!block) {
 			printf("Erro ao obter a entrada da tabela\n");
@@ -82,12 +87,12 @@ int invoke(struct MessageT *msg, struct table_t *table){
 			msg->key = NULL;  // Definir para NULL para indicar que não será usado
 		}
 		msg->value.len = block->datasize;
-		msg->value.data = (uint8_t *)block->data; //TODO verificar se e mesmo assim que se passa a data
+		msg->value.data = (uint8_t *)block->data; //TODO verificar se e mesmo assim que se passa a data ; penso q sim
 		printf("Get realizado com sucesso!\n");
 
 	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_DEL) {
 
-		//Remove a entrada da tabela
+		// Remove a entrada da tabela
 		int result = table_remove(table, msg->key);
 		if (result < 0) {
 			printf("Erro ao eliminar entrada na tabela\n");
@@ -179,20 +184,29 @@ int invoke(struct MessageT *msg, struct table_t *table){
 			if (!entry) {
 				printf("Erro ao criar a entrada para a chave %s\n", keys[i]);
 				list_free_keys(keys);
-				free(msg->entries); // Liberar entradas alocadas antes de retornar
+				free(msg->entries); // Liberta entradas alocadas antes de retornar
+				msg->entries = NULL; // Definir para NULL para indicar que não será usado
 				return -1;
 			}
 
 			EntryT *newEntry = malloc(sizeof(EntryT)); // Alocar espaço para a nova entrada
-			if (!newEntry) {
+			if (!newEntry) { // Verificar se a alocação foi bem sucedida
 				printf("Erro ao alocar memória para a nova entrada\n");
 				list_free_keys(keys);
-				free(msg->entries); // Liberar entradas alocadas antes de retornar
+				free(msg->entries); // Libertar entradas alocadas antes de retornar
+				msg->entries = NULL; // Definir para NULL para indicar que não será usado
 				return -1;
 			}
 
 			entry_t__init(newEntry); // Inicializar a nova entrada
 			newEntry->key = strdup(entry->key); // Copiar a chave para a nova entrada
+			if (!newEntry->key) {
+				printf("Erro ao duplicar a chave para a nova entrada\n");
+				list_free_keys(keys);
+				free(msg->entries); // Libertar entradas alocadas antes de retornar
+				msg->entries = NULL; // Definir para NULL para indicar que não será usado
+				return -1;
+			}
 			newEntry->value.len = entry->value->datasize; // Definir o tamanho do valor
 			newEntry->value.data = (uint8_t *)entry->value->data;
 			// Adicionar a entrada à mensagem

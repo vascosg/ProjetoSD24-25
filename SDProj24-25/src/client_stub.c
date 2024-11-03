@@ -30,7 +30,7 @@ struct rtable_t *rtable_connect(char *address_port) {
 		return NULL;
 	}
 
-	// Definir ip e porto na rtabçe
+	// Definir ip e porto na rtable
 	rtable->server_address = strdup(address);
 	rtable->server_port = atoi(port_str);
 
@@ -40,7 +40,7 @@ struct rtable_t *rtable_connect(char *address_port) {
 	// Cria socket
 	rtable->sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (rtable->sockfd < 0) {
-		printf("Falha ao conecar ao criar a socket.");
+		printf("Falha ao conectar ao criar a socket.");
 		free(rtable->server_address);
 		free(rtable);
 		return NULL;
@@ -78,17 +78,17 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 		return -1;
 	}
 
-	// Criar menssagem ainda nao serializada
+	// Criar mensagem ainda nao serializada
 	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_PUT;  // Codigos de commando
 	msg.c_type = MESSAGE_T__C_TYPE__CT_ENTRY; // Codigos de tipo de informacao
 
-	//Criar nova EntryT apartir da entry_t
+	// Criar nova EntryT a partir da entry_t
 	EntryT newEntry = ENTRY_T__INIT;
 	newEntry.key = entry->key;
 	newEntry.value.len = entry->value->datasize;
-	newEntry.value.data = (uint8_t *)entry->value->data; // porque em entryT esta defenido que "ProtobufCBinaryData value;"
-	// invez de ser block_t
+	newEntry.value.data = (uint8_t *)entry->value->data; // porque em entryT esta definido que "ProtobufCBinaryData value;"
+	// em vez de ser block_t
 
 	msg.entry = &newEntry;
 
@@ -104,10 +104,10 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 		return -1;
 	}
 
-	//Por nobuffer
+	// Por no buffer
 	message_t__pack(&msg, packed_msg);
 
-	//Enviar e receber
+	// Enviar e receber
 	struct MessageT *received_msg = network_send_receive(rtable, &msg);
 	if (!received_msg) {
 		fprintf(stderr, "Erro no network_send_receive\n");
@@ -189,26 +189,30 @@ int rtable_del(struct rtable_t *rtable, char *key){
 
 }
 
-/* Retorna o número de elementos contidos na tabela ou -1 em caso de erro.
+/* 
+ * Retorna o número de elementos contidos na tabela ou -1 em caso de erro.
  */
 int rtable_size(struct rtable_t *rtable) {
 
 	if (!rtable) return -1;
 
-	// Criar menssagem ainda nao serializada
+	// Criar mensagem ainda nao serializada
 	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_SIZE;
 	msg.c_type = MESSAGE_T__C_TYPE__CT_NONE;
 
-	// Recebe menssagem
-	struct MessageT *response = network_send_receive(rtable, &msg);
+	// Recebe mensagem
+	struct MessageT *response = network_send_receive(rtable, &msg); // mensagem deserializada
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
 		message_t__free_unpacked(response, NULL);
 		return -1;
 	}
+	
+	int result = response->result;
+
 	message_t__free_unpacked(response, NULL);
 
-	return response->result; // TODO isto e o numero de entradas ?? talvez
+	return result; // TODO isto e o numero de entradas ?? talvez ; não é o n_entries em vez do result??
 }
 
 /* Retorna um array de char* com a cópia de todas as keys da tabela,
@@ -219,7 +223,7 @@ char **rtable_get_keys(struct rtable_t *rtable) {
 
 	if (!rtable) return NULL;
 
-	// Criar menssagem ainda nao serializada
+	// Criar mensagem ainda nao serializada
 	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_GETKEYS;
 	msg.c_type = MESSAGE_T__C_TYPE__CT_NONE;
@@ -245,9 +249,7 @@ char **rtable_get_keys(struct rtable_t *rtable) {
  */
 void rtable_free_keys(char **keys) {
 
-	if (!keys ) return;
-
-	list_free_keys(keys); //TODO utilizamos os metodos do modulo list?
+	list_free_keys(keys); //TODO utilizamos os metodos do modulo list? acho q sim
 
 }
 
@@ -258,12 +260,12 @@ struct entry_t **rtable_get_table(struct rtable_t *rtable) {
 
 	if (!rtable ) return NULL;
 
-	// Create a new message
+	// Cria nova mensagem
 	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_GETTABLE;
 	msg.c_type = MESSAGE_T__C_TYPE__CT_NONE;
 
-	// Receber tabela
+	// Recebe tabela
 	struct MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
 		return NULL;
@@ -293,5 +295,3 @@ void rtable_free_entries(struct entry_t **entries) {
 
 	free(entries);
 }
-
-
