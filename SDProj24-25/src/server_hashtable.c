@@ -1,4 +1,4 @@
-/*#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -31,7 +31,6 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Erro ao inicializar o socket do servidor.\n");
         return -1;
     }
-    printf("Servidor inicializado e escutando na porta %d...\n", port);
 
     // 2. Inicializar a tabela
     struct table_t *table = server_skeleton_init(n_lists);
@@ -40,18 +39,16 @@ int main(int argc, char **argv) {
         server_network_close(server_socket);
         return -1;
     }
-    printf("Tabela inicializada com %d listas.\n", n_lists);
 
     // 3. Loop principal para aceitar conexões de clientes e processar operações
     while (1) {
-        printf("Aguardando conexão de um cliente...\n");
+        printf("Server ready, waiting for connections\n");
 
         if (network_main_loop(server_socket, table) < 0) {
             printf("Erro no loop de atendimento ao cliente.\n");
             break;
         }
 
-        printf("Conexão encerrada. Aguardando novo cliente...\n");
     }
 
     // Limpeza dos recursos
@@ -60,4 +57,4 @@ int main(int argc, char **argv) {
     printf("Servidor finalizado.\n");
 
     return 0;
-}*/
+}

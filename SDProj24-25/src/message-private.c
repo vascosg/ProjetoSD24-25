@@ -1,15 +1,12 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include <stdio.h>
 #include "../include/message-private.h"
 #include "../include/htmessages.pb-c.h"
 
-
-MessageT;
-
 size_t write_all(int sock, const void *buf, size_t len)
 {
-	const char *p = buf;
 	size_t buffersize = len;
 	while (len > 0)
 	{
@@ -18,7 +15,7 @@ size_t write_all(int sock, const void *buf, size_t len)
 		{
 			if (errno == EINTR)
 				continue;
-			perror("write failed: ");
+			//printf("Erro ao escrever no wtire_all\n ");
 			return res;
 		}
 		buf += res;
@@ -40,7 +37,7 @@ size_t read_all(int sock, void *buf, size_t len)
 		{
 			if (errno == EINTR)
 				continue;
-			perror("read failed: ");
+			//printf("Erro ao ler no read_all\n ");
 			return result;
 		}
 

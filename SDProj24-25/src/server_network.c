@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <errno.h>
 #include "../include/server_skeleton.h"
 #include "../include/message-private.h"
 #include "../include/table.h"
@@ -24,7 +25,7 @@ int server_network_init(short port){
 	// Criação do socket
 	server_socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_socket < 0) {
-		perror("Erro ao criar o socket\n");
+		//perror("Erro ao criar o socket\n");
 		return -1;
 	}
 
@@ -35,14 +36,14 @@ int server_network_init(short port){
 
 	// Vincula o socket ao endereço e porta especificados
 	if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-		perror("Erro ao fazer bind no socket\n");
+		//perror("Erro ao fazer bind no socket\n");
 		close(server_socket);
 		return -1;
 	}
 
 	// Coloca o socket em modo de escuta para aceitar conexões
 	if (listen(server_socket, 0) < 0) {
-		perror("Erro ao escutar no socket");
+		//perror("Erro ao escutar no socket");
 		close(server_socket);
 		return -1;
 	}
@@ -67,41 +68,45 @@ int network_main_loop(int listening_socket, struct table_t *table){ //TODO skele
 
 	while ((client_socket = accept(listening_socket,(struct sockaddr *) &client_addr, &client_len)) != -1) {
 
-		printf("Cliente conectado!\n");
+		printf("Client connection established\n");
 
 		while(1) {
 			// Recebe uma mensagem do cliente
 			struct MessageT *request = network_receive(client_socket);
 			if (!request) {
-				perror("Erro ao receber mensagem\n");
+
+				if (errno == 0) break;
+				//perror("Erro ao receber mensagem\n");
 				message_t__free_unpacked(request, NULL);
-				close(client_socket);
-				return -1;
+				//close(client_socket);
+				//return -1;
 			}
 
 			// Processa a mensagem com a tabela e o skeleton (implementação depende do contexto)
 			int invoke_result = invoke(request, table);  // Supõe que esta função exista
 
 			// Verifica se ocorreu um erro
-			/*if (invoke_result < 0) {
-				perror("Erro ao processar a mensagem\n");
-				message_t__free_unpacked(request, NULL);
-				close(client_socket);
-				return -1;
-			}*/
+			if (invoke_result < 0) {
+				//perror("Erro ao processar a mensagem\n");
+				//message_t__free_unpacked(request, NULL);
+				//close(client_socket);
+				//return -1;
+			}
 
-			
+
 			// Envia a resposta ao cliente
 			if (network_send(client_socket, request) < 0) {
-				perror("Erro ao enviar mensagem\n");
+				//perror("Erro ao enviar mensagem\n");
 				message_t__free_unpacked(request, NULL);
-				close(client_socket);
-				return -1;
+				//close(client_socket);
+				//return -1;
 			}
 
 			message_t__free_unpacked(request, NULL);
 		}
+
 		close(client_socket);
+		printf("Client connection closed\n");
 	}
 
 	return 0;
@@ -118,7 +123,7 @@ struct MessageT *network_receive(int client_socket){
 	// 1. Receber o tamanho da resposta (2 bytes - short)
 	short net_response_size;
 	if (read_all(client_socket, &net_response_size, sizeof(net_response_size)) != sizeof(net_response_size)) {
-		perror("Erro ao receber o tamanho da resposta\n");
+		//perror("Erro ao receber o tamanho da resposta\n");
 		return NULL;
 	}
 	uint16_t response_size = ntohs(net_response_size); // Converte para host byte order
@@ -126,12 +131,12 @@ struct MessageT *network_receive(int client_socket){
 	// 2. Receber a resposta serializada
 	uint8_t *response_buffer = malloc(response_size);
 	if (!response_buffer) {
-		perror("Erro ao alocar memória para a resposta\n");
+		//perror("Erro ao alocar memória para a resposta\n");
 		return NULL;
 	}
 
 	if (read_all(client_socket, response_buffer, response_size) != response_size) {
-		perror("Erro ao receber a resposta\n");
+		//perror("Erro ao receber a resposta\n");
 		free(response_buffer);
 		return NULL;
 	}
@@ -141,7 +146,7 @@ struct MessageT *network_receive(int client_socket){
 	free(response_buffer); // Liberta o buffer após a deserialização
 
 	if (!response_msg) {
-		perror("Erro ao deserializar a resposta\n");
+		//perror("Erro ao deserializar a resposta\n");
 		return NULL;
 	}
 
@@ -163,13 +168,13 @@ int network_send(int client_socket, struct MessageT *msg){
 	if (!len) return -1;
 	void* buf = malloc(len);
 	if (!buf) {  // Verifica se a alocação foi bem sucedida
-		perror("Erro ao alocar memória para a mensagem");
+		//perror("Erro ao alocar memória para a mensagem");
 		return -1;
 	}
 
 	int msg_len = message_t__pack(msg, buf); // Serializa a mensagem para o buffer
 	if (msg_len != len) { // verifica se o tamanho da mensagem serializada é o esperado
-		perror("Erro ao serializar a mensagem\n");
+		//perror("Erro ao serializar a mensagem\n");
 		free(buf);
 		return -1;
 	}
@@ -179,14 +184,14 @@ int network_send(int client_socket, struct MessageT *msg){
 	short net_msg_size = htons(len); // Converte para network byte order
 
 	if (write_all(client_socket, &net_msg_size, sizeof(net_msg_size)) != sizeof(net_msg_size)) {
-		perror("Erro ao enviar o tamanho da mensagem\n");
+		//perror("Erro ao enviar o tamanho da mensagem\n");
 		free(buf);
 		return -1;
 	}
 
 	// 3. Enviar a mensagem serializada
 	if (write_all(client_socket, buf, len) != len) {
-		perror("Erro ao enviar a mensagem\n");
+		//perror("Erro ao enviar a mensagem\n");
 		free(buf);
 		return -1;
 	}
@@ -202,7 +207,7 @@ int network_send(int client_socket, struct MessageT *msg){
 int server_network_close(int socket){
 
 	if (close(socket) < 0) {
-		perror("Erro ao fechar o socket\n");
+		//perror("Erro ao fechar o socket\n");
 		return -1;
 	}
 	return 0;

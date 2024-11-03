@@ -19,16 +19,13 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 
-	printf("Informacoes da rtable: %s\n", argv[1]);
-	fflush(stdout);  // Garantir que a mensagem seja exibida imediatamente
-
 	char command[MAX_COMMAND_LEN];
 	char *tokens[MAX_TOKENS]; // Array para guardar os pointers
 	int token_count;
 	struct rtable_t *rt = rtable_connect(argv[1]);
 
 	if (!rt) {
-		printf("Erro ao conectar ao servidor. A terminar o programa...\n");
+		printf("Error in connect\n");
 		return -1;
 	}
 
@@ -38,7 +35,7 @@ int main(int argc, char **argv) {
 
 		// Lê o comando do utilizador
 		if (fgets(command, MAX_COMMAND_LEN, stdin) == NULL) {
-			printf("Erro ao ler o comando.\n");
+			printf("Usage: p[ut] <key> <value> | g[et] <key> | d[el] <key> | s[ize] | [get]k[eys] | [get]t[able] | q[uit]\n");
 			continue;
 		}
 
@@ -57,7 +54,7 @@ int main(int argc, char **argv) {
 		token = strtok(command, " ");
 
 		// Verifica se o comando é 'quit'
-		if (token != NULL && strcmp(token, "quit") == 0) { //TODO switch case ? yesss
+		if (token != NULL &&  ( strcmp(token, "quit") == 0 || strcmp(token,"q") == 0 ) ) { //TODO switch case ? yesss
 			printf("Bye, bye!\n");
 			break;
 		}
@@ -70,10 +67,10 @@ int main(int argc, char **argv) {
 			token = strtok(NULL, " "); // Próximo token
 		}
 
-		if(token_count > 0 && strcmp(tokens[0], "put") == 0){
+		if(token_count > 0 &&  ( strcmp(tokens[0], "put") == 0 || (strcmp(tokens[0], "p") == 0) ) ){
 
-			if (token_count < 3 || tokens[1] == NULL || tokens[2] == NULL) { // Verifica se o comando put tem os argumentos necessários
-				printf("Argumentos insuficientes para o comando put\n");
+			if (token_count < 3 || !tokens[1] || !tokens[2] ) { // Verifica se o comando put tem os argumentos necessários
+				printf("Invalid arguments. Usage: put <key> <value>\n");
 				continue;
 			}
 
@@ -81,41 +78,53 @@ int main(int argc, char **argv) {
 			struct entry_t *entry = entry_create(tokens[1],block);
 
 			if (rt->sockfd < 0) {
-				perror("Socket invalido\n");
+				//perror("Socket invalido\n");
 				break;
 			}
 			rtable_put(rt,entry);
 
-		} else if (token_count > 0 && strcmp(tokens[0], "get") == 0) { //TODO preparar para o caso de n encontrar a entrada
+		} else if (token_count > 0 && ( strcmp(tokens[0], "get") == 0 || (strcmp(tokens[0], "g") == 0) ) ) { //TODO preparar para o caso de n encontrar a entrada
+
+			if (token_count < 2 || !tokens[1]  ) { // Verifica se o comando put tem os argumentos necessários
+				printf("Invalid arguments. Usage: get <key>\n");
+				continue;
+			}
 
 			if (rt->sockfd < 0) {
-				perror("Socket invalido\n");
+				//perror("Socket invalido\n");
 				break;
 			}
 
 			struct block_t *block_received = rtable_get(rt, tokens[1]);
 			if (!block_received) {
-				printf("Erro ao obter o bloco\n");
+				printf("Error in rtable_get or key not found!\n");
 				continue;
 			}
 
-		} else if (token_count > 0 && strcmp(tokens[0], "del") == 0) { // TODO Prepatar para quando n tem a entry para deletar
+		} else if (token_count > 0 &&  ( strcmp(tokens[0], "del") == 0 || (strcmp(tokens[0], "d") == 0) )  ) { // TODO Prepatar para quando n tem a entry para deletar
+
+			if (token_count < 2 || !tokens[1]  ) { // Verifica se o comando put tem os argumentos necessários
+				printf("Invalid arguments. Usage: del <key>\n");
+				continue;
+			}
 
 			if (rt->sockfd < 0) {
-				perror("Socket invalido\n");
+				//perror("Socket invalido\n");
 				break;
 			}
 
-			if (rtable_del(rt,tokens[1]) != 0) {
-				printf("Erro ao eliminar entrada na tabela \n");
+			int del_result = rtable_del(rt,tokens[1]);
+
+			if (del_result != 0) {
+				printf("Error in rtable_del or key not found! \n");
+				continue;
 			}
 
-			printf("Entry removed\n");
 
-		} else if (token_count > 0 && strcmp(tokens[0], "size") == 0) {
+		} else if (token_count > 0 && ( strcmp(tokens[0], "size") == 0 || (strcmp(tokens[0], "s") == 0))) {
 
 			if (rt->sockfd < 0) {
-				perror("Socket invalido\n");
+				//perror("Socket invalido\n");
 				break;
 			}
 
@@ -124,12 +133,13 @@ int main(int argc, char **argv) {
 			if (size == -1) {
 				printf("Erro ao obter o numero de elementos na tabela \n");
 			}
+
 			printf("Table size: %d\n",size);
 
-		} else if (token_count > 0 && strcmp(tokens[0], "getkeys") == 0) { //TODO da erro no list free keys tiver 5 elementos...
+		} else if (token_count > 0 &&  ( strcmp(tokens[0], "getkeys") == 0 || (strcmp(tokens[0], "k") == 0) )) { //TODO da erro no list free keys tiver 5 elementos...
 
 			if (rt->sockfd < 0) {
-				perror("Socket invalido\n");
+				//perror("Socket invalido\n");
 				break;
 			}
 
@@ -147,10 +157,10 @@ int main(int argc, char **argv) {
 			}
 
 
-		} else if (token_count > 0 && strcmp(tokens[0], "gettable") == 0) {
+		} else if (token_count > 0 &&  ( strcmp(tokens[0], "gettable") == 0 || (strcmp(tokens[0], "t") == 0)) ) {
 
 			if (rt->sockfd < 0) {
-				perror("Socket invalido\n");
+				//perror("Socket invalido\n");
 				break;
 			}
 
@@ -160,6 +170,8 @@ int main(int argc, char **argv) {
 				printf("Erro ao obter as entradas\n");
 			}
 
+		} else {
+			printf("Usage: p[ut] <key> <value> | g[et] <key> | d[el] <key> | s[ize] | [get]k[eys] | [get]t[able] | q[uit]\n");
 		}
 
 	}

@@ -34,7 +34,6 @@ struct rtable_t *rtable_connect(char *address_port) {
 	rtable->server_address = strdup(address);
 	rtable->server_port = atoi(port_str);
 
-	printf("Conectar ao server IP: %s, Port: %d\n", rtable->server_address, rtable->server_port);
 
 
 	// Cria socket
@@ -46,10 +45,7 @@ struct rtable_t *rtable_connect(char *address_port) {
 		return NULL;
 	}
 
-	if(network_connect(rtable) == -1) {
-		printf("Falha ao conectar ao servidor.");
-		return NULL;
-	}
+	if(network_connect(rtable) == -1) return NULL;
 
 	return rtable;
 }
@@ -110,7 +106,7 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 	// Enviar e receber
 	struct MessageT *received_msg = network_send_receive(rtable, &msg);
 	if (!received_msg) {
-		fprintf(stderr, "Erro no network_send_receive\n");
+		//fprintf(stderr, "Erro no network_send_receive\n");
 		free(packed_msg);
 		return -1;
 	}
@@ -143,7 +139,7 @@ struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 	struct MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
-		fprintf(stderr, "Erro no network_send_receive\n");
+		//fprintf(stderr, "Erro no network_send_receive\n");
 		return NULL;
 	}
 
@@ -179,12 +175,12 @@ int rtable_del(struct rtable_t *rtable, char *key){
 
 	struct MessageT *response = network_send_receive(rtable, &msg);
 
-	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
+	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
-		fprintf(stderr, "Erro no network_send_receive\n");
+		//fprintf(stderr, "Erro no network_send_receive\n");
 		return -1;
 	}
-
+	printf("Entry removed\n");
 	return 0;
 
 }
@@ -203,7 +199,7 @@ int rtable_size(struct rtable_t *rtable) {
 
 	// Recebe mensagem
 	struct MessageT *response = network_send_receive(rtable, &msg); // mensagem deserializada
-	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
+	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
 		return -1;
 	}
@@ -230,7 +226,7 @@ char **rtable_get_keys(struct rtable_t *rtable) {
 
 	// Receber as keys
 	struct MessageT *response = network_send_receive(rtable, &msg);
-	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
+	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
 		return NULL;
 	}
@@ -267,7 +263,7 @@ struct entry_t **rtable_get_table(struct rtable_t *rtable) {
 
 	// Recebe tabela
 	struct MessageT *response = network_send_receive(rtable, &msg);
-	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_BAD) {
+	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		return NULL;
 	}
 
