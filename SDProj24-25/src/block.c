@@ -15,8 +15,10 @@ struct block_t *block_create(int size, void *data) {
 
     struct block_t *new_block = malloc(sizeof(struct block_t)); //Tenta criar um novo bloco
 
-    if (!new_block) return NULL; // Falha ao alocar memoria
-
+    if (!new_block){
+        free(new_block);
+        return NULL; // Falha ao alocar memoria
+    }
     new_block->datasize = size;
     new_block->data = data;
 

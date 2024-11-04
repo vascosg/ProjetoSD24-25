@@ -57,8 +57,10 @@ struct entry_t *entry_duplicate(struct entry_t *e) {
 
 	struct entry_t *dup_entry = entry_create(dup_key, dup_value);// Cria uma nova entry, dup_value é destruido e dup_entry fica com uma cópia
 
-	if (!dup_entry) return NULL; // Falha ao fazer o dup
-
+	if (!dup_entry){
+		free(dup_entry);
+		return NULL; // Falha ao fazer o dup
+	}
 	return dup_entry;
 }
 
