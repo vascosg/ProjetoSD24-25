@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
 		command[strcspn(command, "\n")] = '\0';
 
 		if (strspn(command, " ") == strlen(command)) {
-			printf("Comando vazio ou apenas espaços. Por favor, insira um comando válido.\n");
+			//printf("");
 			continue;  // Volta para o início do loop
 		}
 
@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
 
 			if (!keys) {
 				printf("Erro ao obter as chaves\n");
-				break;
+				//break;
 			} else {
 				for (size_t i = 0; i < num_keys; i++) {
 					printf("%s\n", keys[i]);

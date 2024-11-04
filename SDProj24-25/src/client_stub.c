@@ -208,7 +208,7 @@ int rtable_size(struct rtable_t *rtable) {
 
 	message_t__free_unpacked(response, NULL);
 
-	return result; // TODO isto e o numero de entradas ?? talvez ; não é o n_entries em vez do result??
+	return result; 
 }
 
 /* Retorna um array de char* com a cópia de todas as keys da tabela,
@@ -245,7 +245,7 @@ char **rtable_get_keys(struct rtable_t *rtable) {
  */
 void rtable_free_keys(char **keys) {
 
-	list_free_keys(keys); //TODO utilizamos os metodos do modulo list? acho q sim
+	list_free_keys(keys);
 
 }
 
