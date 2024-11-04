@@ -1,3 +1,11 @@
+/* ------------------------------------
+---------------  SD-054 ---------------
+    Filipa Inácio       fc59788
+    Tomás Canilhas      fc59794
+    Vasco Baldé         fc58174
+---------------------------------------
+------------------------------------ */
+
 #include "../include/client_stub-private.h"
 #include "../include/htmessages.pb-c.h"
 #include "../include/client_network.h"

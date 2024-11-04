@@ -1,3 +1,11 @@
+/* ------------------------------------
+---------------  SD-054 ---------------
+    Filipa Inácio       fc59788
+    Tomás Canilhas      fc59794
+    Vasco Baldé         fc58174
+---------------------------------------
+------------------------------------ */
+
 #include <stdlib.h> // Para malloc, free
 #include <string.h> // Para memcpy
 #include "../include/block.h"  // Incluir o cabeçalho do bloco

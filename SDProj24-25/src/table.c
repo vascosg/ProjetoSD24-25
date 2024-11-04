@@ -1,3 +1,11 @@
+/* ------------------------------------
+---------------  SD-054 ---------------
+    Filipa Inácio       fc59788
+    Tomás Canilhas      fc59794
+    Vasco Baldé         fc58174
+---------------------------------------
+------------------------------------ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,7 +60,7 @@ int table_put(struct table_t *t, char *key, struct block_t *value) {
 		return -1;
 	}
 
-	int index = hash_function(key, t->size); // Obtem o indexda lista  para key na tabela
+	int index = hash_function(key, t->size); // Obtem o index da lista  para key na tabela
 
 	char *key_copy = strdup(key);
 	struct entry_t *new_entry = entry_create(key_copy, block_duplicate(value));

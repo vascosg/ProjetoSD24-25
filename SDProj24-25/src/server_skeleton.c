@@ -1,3 +1,11 @@
+/* ------------------------------------
+---------------  SD-054 ---------------
+    Filipa Inácio       fc59788
+    Tomás Canilhas      fc59794
+    Vasco Baldé         fc58174
+---------------------------------------
+------------------------------------ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +35,7 @@ struct table_t *server_skeleton_init(int n_lists){
  * e outros recursos usados pelo skeleton.
  * Retorna 0 (OK) ou -1 em caso de erro.
  */
-int server_skeleton_destroy(struct table_t *table){ // TODO outros recursos ? acho q é só isto
+int server_skeleton_destroy(struct table_t *table){
 
 	if (!table) return -1;
 	table_destroy(table);
@@ -87,7 +95,7 @@ int invoke(struct MessageT *msg, struct table_t *table){
 			msg->key = NULL;  // Definir para NULL para indicar que não será usado
 		}
 		msg->value.len = block->datasize;
-		msg->value.data = (uint8_t *)block->data; //TODO verificar se e mesmo assim que se passa a data ; penso q sim
+		msg->value.data = (uint8_t *)block->data;
 		printf("Get realizado com sucesso!\n");
 
 	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_DEL) {

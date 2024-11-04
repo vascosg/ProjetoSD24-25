@@ -1,3 +1,11 @@
+/* ------------------------------------
+---------------  SD-054 ---------------
+    Filipa Inácio       fc59788
+    Tomás Canilhas      fc59794
+    Vasco Baldé         fc58174
+---------------------------------------
+------------------------------------ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -54,7 +62,7 @@ int main(int argc, char **argv) {
 		token = strtok(command, " ");
 
 		// Verifica se o comando é 'quit'
-		if (token != NULL &&  ( strcmp(token, "quit") == 0 || strcmp(token,"q") == 0 ) ) { //TODO switch case ? yesss
+		if (token != NULL &&  ( strcmp(token, "quit") == 0 || strcmp(token,"q") == 0 ) ) {
 			printf("Bye, bye!\n");
 			break;
 		}

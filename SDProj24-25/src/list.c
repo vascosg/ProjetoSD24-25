@@ -1,3 +1,11 @@
+/* ------------------------------------
+---------------  SD-054 ---------------
+    Filipa Inácio       fc59788
+    Tomás Canilhas      fc59794
+    Vasco Baldé         fc58174
+---------------------------------------
+------------------------------------ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +59,7 @@ int list_add(struct list_t *l, struct entry_t *entry) {
 	new_node->next = NULL;
 	new_node->prev = NULL;
 
-	if (l->size == 0) { // Casso da lista vazia
+	if (l->size == 0) { // Caso da lista vazia
 
 		l->head = new_node;
 		l->size++;
@@ -65,7 +73,7 @@ int list_add(struct list_t *l, struct entry_t *entry) {
 
 		if (entry_compare(current->entry, new_node->entry) == 0) { // Entrys iguais
 
-			//Como teem a mesma key, devem se dar replace
+			//Como têm a mesma key, devem se dar replace
 			//entry_replace(current->entry, new_node->entry->key, new_node->entry->value);
 
 			entry_destroy(current->entry);
