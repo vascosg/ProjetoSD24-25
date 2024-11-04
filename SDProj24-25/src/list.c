@@ -85,7 +85,7 @@ int list_add(struct list_t *l, struct entry_t *entry) {
 		} else if (entry_compare(current->entry, new_node->entry) == 1) { // New_node e mais pequeno que o current
 			                                                              // Logo vai new_node fica atraz de current na lisa
 
-			if (current->prev == NULL) { // Adicionar a cabeça da lista
+			if (current == l->head) { // Adicionar a cabeça da lista
 
 				l->head = new_node;
 				new_node->next = current;
@@ -217,8 +217,12 @@ int list_remove(struct list_t *l, char *key) {
 
 				l->head = current->next;
 
-			} else { // Retira no meio ou fim
-				current->prev = current->next;
+			}else if (current->next == NULL) { // Retira no fim
+				current->prev->next = current->next;
+
+			} else { // Retira no meio
+				current->prev->next = current->next;
+				current->next->prev = current->prev;
 			}
 
 			entry_destroy(current->entry); // Elimina a entry

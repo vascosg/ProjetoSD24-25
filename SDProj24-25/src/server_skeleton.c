@@ -25,7 +25,7 @@ struct table_t *server_skeleton_init(int n_lists){
 
 	struct table_t *table = table_create(n_lists);
 	if (!table) {
-		fprintf(stderr, "Erro ao criar a tabela.\n");
+		//fprintf(stderr, "Erro ao criar a tabela.\n");
 		return NULL;
 	}
 	return table;
@@ -80,7 +80,7 @@ int invoke(struct MessageT *msg, struct table_t *table){
 		// Obter entrada da tabela
 		struct block_t* block = table_get(table, msg->key);
 		if(!block) {
-			printf("Erro ao obter a entrada da tabela\n");
+			//printf("Erro ao obter a entrada da tabela\n");
 			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
 			msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
 			return -1;
@@ -96,7 +96,7 @@ int invoke(struct MessageT *msg, struct table_t *table){
 		}
 		msg->value.len = block->datasize;
 		msg->value.data = (uint8_t *)block->data;
-		printf("Get realizado com sucesso!\n");
+		//printf("Get realizado com sucesso!\n");
 
 	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_DEL) {
 

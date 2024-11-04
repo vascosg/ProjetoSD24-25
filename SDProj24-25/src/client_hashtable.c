@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
 				int size = rtable_size(rt);
 
 				if (size == -1) {
-					printf("Erro ao obter o numero de elementos na tabela \n");
+					//printf("Erro ao obter o numero de elementos na tabela \n");
 				}
 
 				printf("Table size: %d\n",size);
