@@ -72,7 +72,7 @@ int invoke(struct MessageT *msg, struct table_t *table){
 		// Obter entrada da tabela
 		struct block_t* block = table_get(table, msg->key);
 		if(!block) {
-			//printf("Erro ao obter a entrada da tabela\n");
+			printf("Erro ao obter a entrada da tabela\n");
 			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
 			msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
 			return -1;
@@ -88,9 +88,16 @@ int invoke(struct MessageT *msg, struct table_t *table){
 		}
 		msg->value.len = block->datasize;
 		msg->value.data = (uint8_t *)block->data; //TODO verificar se e mesmo assim que se passa a data ; penso q sim
-		//printf("Get realizado com sucesso!\n");
+		printf("Get realizado com sucesso!\n");
 
 	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_DEL) {
+
+		if(table_get(table, msg->key) == NULL) {
+			//printf("Erro ao obter a entrada da tabela no del\n");
+			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
+			msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+			return -1;
+		}
 
 		// Remove a entrada da tabela
 		int result = table_remove(table, msg->key);

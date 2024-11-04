@@ -161,14 +161,11 @@ int main(int argc, char **argv) {
 				size_t num_keys = rtable_size(rt);
 				char **keys = rtable_get_keys(rt);
 
-				if (!keys) {
-					//printf("Erro ao obter as chaves\n");
-					//break;
-				} else {
+				if (keys) {
+					
 					for (size_t i = 0; i < num_keys; i++) {
 						printf("%s\n", keys[i]);
 					}
-
 				}
 
 
