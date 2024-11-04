@@ -153,7 +153,6 @@ int table_free_keys(char **keys) {
  * ou -1 em caso de erro.
  */
 int table_remove(struct table_t *t, char *key) {
-
 	if ( !t || !key ) return -1; // Argumentos invalidos
 
 	int index = hash_function(key, t->size); // Obtem o index da lista  para key na tabela

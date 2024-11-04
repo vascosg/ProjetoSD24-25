@@ -60,7 +60,7 @@ int server_network_init(short port){
  * A função não deve retornar, a menos que ocorra algum erro. Nesse
  * caso retorna -1.
  */
-int network_main_loop(int listening_socket, struct table_t *table){ //TODO skeleton init ? é feito no server hastable
+int network_main_loop(int listening_socket, struct table_t *table){
 	int client_socket;
 	struct sockaddr_in client_addr;
 	socklen_t client_len= sizeof(client_addr);
@@ -83,24 +83,11 @@ int network_main_loop(int listening_socket, struct table_t *table){ //TODO skele
 			}
 
 			// Processa a mensagem com a tabela e o skeleton (implementação depende do contexto)
-			int invoke_result = invoke(request, table);  // Supõe que esta função exista
-
+			invoke(request, table);  // Supõe que esta função exista
 			// Verifica se ocorreu um erro
-			if (invoke_result < 0) {
-				//perror("Erro ao processar a mensagem\n");
-				//message_t__free_unpacked(request, NULL);
-				//close(client_socket);
-				//return -1;
-			}
-
 
 			// Envia a resposta ao cliente
-			if (network_send(client_socket, request) < 0) {
-				//perror("Erro ao enviar mensagem\n");
-				message_t__free_unpacked(request, NULL);
-				//close(client_socket);
-				//return -1;
-			}
+			network_send(client_socket, request);
 
 			message_t__free_unpacked(request, NULL);
 		}

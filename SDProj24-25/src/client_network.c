@@ -6,6 +6,7 @@
 #include "../include/message-private.h"
 #include "../include/htmessages.pb-c.h"
 #include "../include/client_network.h"
+#include "../include/server_network.h"
 #include "../include/client_stub-private.h"
 
 /* Esta função deve:
@@ -62,69 +63,22 @@ int network_connect(struct rtable_t *rtable) {
 struct MessageT *network_send_receive(struct rtable_t *rtable, struct MessageT *msg) {
 	if (!rtable || !msg) return NULL;
 
-	// 1. Serializar a mensagem
-	unsigned int len = message_t__get_packed_size(msg); // Tamanho da mensagem serializada
-	if (!len) return NULL;
-	void* buf = malloc(len);
-	if (!buf) {  // Verifica se a alocação foi bem sucedida
-		//perror("Erro ao alocar memória para a mensagem");
-		return NULL;
-	}
+	// Serializa a mensagem
+	int code = network_send(rtable->sockfd, msg);
 
-	//int msg_len = message_t__pack(msg, buf); // Serializa a mensagem para o buffer
-	 message_t__pack(msg, buf);
-
-	// 2. Enviar o tamanho da mensagem (2 bytes - short)
-
-	short net_msg_size = htons(len); // Converte para network byte order
-
-	if (write_all(rtable->sockfd, &net_msg_size, sizeof(net_msg_size)) != sizeof(net_msg_size)) {
-		//perror("Erro ao enviar o tamanho da mensagem\n");
-		free(buf);
-		return NULL;
-	}
-
-	// 3. Enviar a mensagem serializada
-	if (write_all(rtable->sockfd, buf, len) != len) {
+	if (code < 0) {
 		//perror("Erro ao enviar a mensagem\n");
-		free(buf);
 		return NULL;
 	}
 
-	free(buf); // Liberta o buffer após o envio
-
-	// 4. Receber o tamanho da resposta (2 bytes - short)
-	short net_response_size;
-	if (read_all(rtable->sockfd, &net_response_size, sizeof(net_response_size)) != sizeof(net_response_size)) {
-		//perror("Erro ao receber o tamanho da resposta\n");
-		return NULL;
-	}
-	uint16_t response_size = ntohs(net_response_size); // Converte para host byte order
-
-	// 5. Receber a resposta serializada
-	uint8_t *response_buffer = malloc(response_size);
-	if (!response_buffer) {
-		//perror("Erro ao alocar memória para a resposta\n");
+	// Recebe a mensagem de resposta
+	struct MessageT *response = network_receive(rtable->sockfd);
+	if (!response) {
+		//perror("Erro ao receber a mensagem\n");
 		return NULL;
 	}
 
-	if (read_all(rtable->sockfd, response_buffer, response_size) != response_size) {
-		//perror("Erro ao receber a resposta\n");
-		free(response_buffer);
-		return NULL;
-	}
-
-	// 6. Deserializar a resposta
-	struct MessageT *response_msg = message_t__unpack(NULL, response_size, response_buffer);
-	free(response_buffer); // Liberta o buffer após a deserialização
-
-	if (!response_msg) {
-		//perror("Erro ao deserializar a resposta\n");
-		return NULL;
-	}
-
-	// 7. Retorna a mensagem de resposta
-	return response_msg;
+	return response;
 }
 
 /* Fecha a ligação estabelecida por network_connect().

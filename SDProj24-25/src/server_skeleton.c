@@ -94,7 +94,7 @@ int invoke(struct MessageT *msg, struct table_t *table){
 
 		// Remove a entrada da tabela
 		int result = table_remove(table, msg->key);
-		if (result < 0) {
+		if (result != 0) {
 			//printf("Erro ao eliminar entrada na tabela\n");
 			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
 			msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;

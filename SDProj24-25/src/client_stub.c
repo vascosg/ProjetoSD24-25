@@ -36,6 +36,7 @@ struct rtable_t *rtable_connect(char *address_port) {
 
 
 
+
 	// Cria socket
 	rtable->sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (rtable->sockfd < 0) {
@@ -130,16 +131,16 @@ struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 		return NULL;
 	}
 
-	// Criar menssagem ainda nao serializada
+	// Criar mensagem ainda nao serializada
 	struct MessageT msg = MESSAGE_T__INIT;
-	msg.opcode = MESSAGE_T__OPCODE__OP_GET;  // Codigos de commando
+	msg.opcode = MESSAGE_T__OPCODE__OP_GET;  // Codigos de comando
 	msg.c_type = MESSAGE_T__C_TYPE__CT_KEY;  // Codigos de tipo de informacao
 	msg.key = key;
 
 	struct MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
-		//fprintf(stderr, "Erro no network_send_receive\n");
+		//printf("Erro no network_send_receive\n");
 		return NULL;
 	}
 
@@ -158,7 +159,7 @@ struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 }
 
 /* Função para remover um elemento da tabela. Vai libertar
- * toda a memoria alocada na respetiva operação rtable_put().
+ * toda a memoria alocada na resp1etiva operação rtable_put().
  * Retorna 0 (OK), ou -1 (chave não encontrada ou erro).
  */
 int rtable_del(struct rtable_t *rtable, char *key){
@@ -167,17 +168,15 @@ int rtable_del(struct rtable_t *rtable, char *key){
 		return -1;
 	}
 
-	// Criar menssagem ainda nao serializada
+	// Criar mensagem ainda nao serializada
 	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_DEL;  // Codigos de commando
 	msg.c_type = MESSAGE_T__C_TYPE__CT_KEY;  // Codigos de tipo de informacao
 	msg.key = key;
 
 	struct MessageT *response = network_send_receive(rtable, &msg);
-
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
-		//fprintf(stderr, "Erro no network_send_receive\n");
 		return -1;
 	}
 	printf("Entry removed\n");
