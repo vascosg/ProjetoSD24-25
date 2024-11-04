@@ -205,13 +205,12 @@ int list_remove(struct list_t *l, char *key) {
 
 	while (current != NULL) { // Enquanto o current n for o fim da lista
 		if (strcmp(current->entry->key, key) == 0) { // Encontra a chave para remover
-
-			if (current->prev == NULL) { // Retirar cabeça
+			if (current == l->head) { // Retirar cabeça
 
 				l->head = current->next;
 
 			} else { // Retira no meio ou fim
-				current->prev->next = current->next;
+				current->prev = current->next;
 			}
 
 			entry_destroy(current->entry); // Elimina a entry
