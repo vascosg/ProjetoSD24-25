@@ -298,3 +298,37 @@ void rtable_free_entries(struct entry_t **entries) {
 
 	free(entries);
 }
+
+/* Obtém as estatísticas do servidor.
+ */
+struct rtable_t *rtable_connect(char *address_port) {
+	
+	// Aloca memoria para rtable
+	struct rtable_t *rtable = malloc(sizeof(struct rtable_t));
+	if (!rtable) return NULL;
+
+	// Parse the server address and port
+	char *address = strtok(address_port, ":");
+	char *port_str = strtok(NULL, ":");
+	if (!address || !port_str ) {
+		free(rtable);
+		return NULL;
+	}
+
+	// Definir ip e porto na rtable
+	rtable->server_address = strdup(address);
+	rtable->server_port = atoi(port_str);
+
+	// Cria socket
+	rtable->sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (rtable->sockfd < 0) {
+		printf("Falha ao conectar ao criar a socket.");
+		free(rtable->server_address);
+		free(rtable);
+		return NULL;
+	}
+
+	if(network_connect(rtable) == -1) return NULL;
+
+	return rtable;
+}

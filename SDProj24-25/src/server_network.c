@@ -68,7 +68,7 @@ int server_network_init(short port){
  * A função não deve retornar, a menos que ocorra algum erro. Nesse
  * caso retorna -1.
  */
-int network_main_loop(int listening_socket, struct table_t *table){
+int network_main_loop(int listening_socket, struct table_t *table){ // a listening_socket tem de ser preparada para a receção de pedidos de múltiplas ligações num determinado porto (determinado pelo método listen)
 	int client_socket;
 	struct sockaddr_in client_addr;
 	socklen_t client_len= sizeof(client_addr);
