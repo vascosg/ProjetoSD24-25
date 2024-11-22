@@ -13,11 +13,13 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <errno.h>
+#include <time.h>
 #include "../include/server_skeleton.h"
 #include "../include/message-private.h"
 #include "../include/table.h"
 #include "../include/htmessages.pb-c.h"
 #include "../include/server_network.h"
+#include "../include/stats.h"
 
 #define BUFFER_SIZE 1024
 
@@ -72,11 +74,16 @@ int network_main_loop(int listening_socket, struct table_t *table){ // a listeni
 	int client_socket;
 	struct sockaddr_in client_addr;
 	socklen_t client_len= sizeof(client_addr);
+	struct statistics_t *stats = statistics_create();
+	clock_t inicio_tempo, fim_tempo;
+	double duracao;
 
 
 	while ((client_socket = accept(listening_socket,(struct sockaddr *) &client_addr, &client_len)) != -1) {
 
 		printf("Client connection established\n");
+
+		//stats->n_clients++; TODO confirmar
 
 		while(1) {
 			// Recebe uma mensagem do cliente
@@ -90,13 +97,31 @@ int network_main_loop(int listening_socket, struct table_t *table){ // a listeni
 				//return -1;
 			}
 
-			// começar a contar o tempo
+			if(request->opcode == MESSAGE_T__OPCODE__OP_STATS) {
 
-			// Processa a mensagem com a tabela e o skeleton (implementação depende do contexto)
-			invoke(request, table);  // Supõe que esta função exista
-			// Verifica se ocorreu um erro
+				if (!stats) { // Se houver problema no stat do server
+					request->opcode = MESSAGE_T__OPCODE__OP_ERROR;
+					request->c_type = MESSAGE_T__C_TYPE__CT_NONE;
 
-			// acabar de contar o tempo e mudar as stats
+				} else { // Formatar a menssagem para enviar com a resposa a stats
+					request->opcode = MESSAGE_T__OPCODE__OP_STATS + 1;
+					request->c_type = MESSAGE_T__C_TYPE__CT_STATS;
+					request->stats = *stats;
+				}
+			} else {
+
+				inicio_tempo = clock();
+
+				// Processa a mensagem com a tabela e o skeleton (implementação depende do contexto)
+				invoke(request, table);  // Supõe que esta função exista
+				// Verifica se ocorreu um erro
+
+				fim_tempo = clock();
+
+				duracao = (double) fim_tempo - inicio_tempo;
+				stats->time_spent += duracao;
+				stats->n_ops++;
+			}
 
 			// Envia a resposta ao cliente
 			network_send(client_socket, request);
@@ -105,6 +130,8 @@ int network_main_loop(int listening_socket, struct table_t *table){ // a listeni
 		}
 
 		close(client_socket);
+
+		//stats->n_clients--; TODO confirmar
 		printf("Client connection closed\n");
 	}
 

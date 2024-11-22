@@ -6,7 +6,7 @@
 ---------------------------------------
 ------------------------------------ */
 
-#include <stdio.h>
+/*#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "../include/client_network.h"
@@ -20,7 +20,7 @@
 #define MAX_COMMAND_LEN 1024
 #define MAX_TOKENS 3
 
-int main(int argc, char **argv) {	// incluir tratamento da OP_STATS
+int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <server>:<port>\n", argv[0]);
@@ -200,4 +200,4 @@ int main(int argc, char **argv) {	// incluir tratamento da OP_STATS
 
 	return 0;
 
-}
+}*/

@@ -302,7 +302,7 @@ void rtable_free_entries(struct entry_t **entries) {
 
 /* Obtém as estatísticas do servidor.
  */
-struct rtable_t *rtable_connect(char *address_port) {
+/*struct rtable_t *rtable_connect(char *address_port) { ja temos o connect em cima
 	
 	// Aloca memoria para rtable
 	struct rtable_t *rtable = malloc(sizeof(struct rtable_t));
@@ -332,7 +332,7 @@ struct rtable_t *rtable_connect(char *address_port) {
 	if(network_connect(rtable) == -1) return NULL;
 
 	return rtable;
-}
+}*/
 
 struct statistics_t *rtable_stats(struct rtable_t *rtable) {	// rever!!!!
 
@@ -341,9 +341,9 @@ struct statistics_t *rtable_stats(struct rtable_t *rtable) {	// rever!!!!
 	// Criar mensagem ainda nao serializada
 	struct MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_STATS;
-	msg.c_type = MESSAGE_T__C_TYPE__CT_NONE;
+	msg.c_type = MESSAGE_T__C_TYPE__CT_STATS;
 
-	// Receber as keys
+	// Envia e verifica se recebe tudo bem
 	struct MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
@@ -351,9 +351,9 @@ struct statistics_t *rtable_stats(struct rtable_t *rtable) {	// rever!!!!
 	}
 
 	struct statistics_t *stats = statistics_create();
-	stats->n_ops = response->result;
-	stats->time_spent = response->value.len;
-	stats->n_clients = response->n_keys;
+	stats->n_ops = response->stats.n_ops;
+	stats->time_spent = response->stats.time_spent;
+	stats->n_clients = response->stats.n_clients;
 
 	return stats;
 }

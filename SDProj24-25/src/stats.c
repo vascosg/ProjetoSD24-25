@@ -28,10 +28,8 @@ struct statistics_t *statistics_create() {
  * previamente alocada.
     * Retorna 0 (OK) ou -1 em caso de erro.
  */
-void statistics_destroy(struct statistics_t *stats) {
-    if (!stats) {
-        return -1;
-    };
+int statistics_destroy(struct statistics_t *stats) {
+    if (!stats) return -1;
 
     free(stats);
 
@@ -42,9 +40,10 @@ void statistics_destroy(struct statistics_t *stats) {
  * o número de clientes dados.
  * Retorna 0 (OK) ou -1 em caso de erro.
  */
-void statistics_update(struct statistics_t *stats, int time, int clients) {
+int statistics_update(struct statistics_t *stats, int time, int clients, int ops) {
     if (!stats) return -1;
 
+    stats->n_ops = ops; //TODO verificar isto
     stats->time_spent += time;
     stats->n_clients = clients;
 
