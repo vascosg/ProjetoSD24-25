@@ -12,6 +12,7 @@
 #include "../include/block.h"
 #include "../include/entry.h"
 #include "../include/list.h"
+#include "../include/stats.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -331,4 +332,28 @@ struct rtable_t *rtable_connect(char *address_port) {
 	if(network_connect(rtable) == -1) return NULL;
 
 	return rtable;
+}
+
+struct statistics_t *rtable_stats(struct rtable_t *rtable) {	// rever!!!!
+
+	if (!rtable) return NULL;
+
+	// Criar mensagem ainda nao serializada
+	struct MessageT msg = MESSAGE_T__INIT;
+	msg.opcode = MESSAGE_T__OPCODE__OP_STATS;
+	msg.c_type = MESSAGE_T__C_TYPE__CT_NONE;
+
+	// Receber as keys
+	struct MessageT *response = network_send_receive(rtable, &msg);
+	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
+		message_t__free_unpacked(response, NULL);
+		return NULL;
+	}
+
+	struct statistics_t *stats = statistics_create();
+	stats->n_ops = response->result;
+	stats->time_spent = response->value.len;
+	stats->n_clients = response->n_keys;
+
+	return stats;
 }

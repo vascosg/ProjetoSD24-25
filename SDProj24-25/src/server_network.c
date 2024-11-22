@@ -90,9 +90,13 @@ int network_main_loop(int listening_socket, struct table_t *table){ // a listeni
 				//return -1;
 			}
 
+			// começar a contar o tempo
+
 			// Processa a mensagem com a tabela e o skeleton (implementação depende do contexto)
 			invoke(request, table);  // Supõe que esta função exista
 			// Verifica se ocorreu um erro
+
+			// acabar de contar o tempo e mudar as stats
 
 			// Envia a resposta ao cliente
 			network_send(client_socket, request);

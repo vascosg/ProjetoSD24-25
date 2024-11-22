@@ -14,6 +14,7 @@
 #include "../include/server_skeleton.h"
 #include "../include/table.h"
 #include "../include/htmessages.pb-c.h"
+#include "../include/stats.h"
 
 /* Inicia o skeleton da tabela. 
  * O main() do servidor deve chamar esta função antes de poder usar a 
@@ -234,11 +235,11 @@ int invoke(struct MessageT *msg, struct table_t *table){		// incluir trataemnto 
 		//printf("GetTable realizado com sucesso!\n");
 		list_free_keys(keys);
 
-	} else if (msg->opcode == MESSAGE_T__C_TYPE__OP_STATS) { // ACABARRRR
+	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_STATS) { // ACABARRRR
 
 		// TODO
 
 	}
 
 	return 0;
-}
+};
