@@ -20,7 +20,7 @@
 #define MAX_COMMAND_LEN 1024
 #define MAX_TOKENS 3
 
-int main(int argc, char **argv) {	// incluir estatísticas
+int main(int argc, char **argv) {	// incluir tratamento da OP_STATS
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <server>:<port>\n", argv[0]);

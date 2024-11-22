@@ -29,6 +29,7 @@ typedef enum _MessageT__Opcode {
   MESSAGE_T__OPCODE__OP_SIZE = 40,
   MESSAGE_T__OPCODE__OP_GETKEYS = 50,
   MESSAGE_T__OPCODE__OP_GETTABLE = 60,
+  MESSAGE_T__C_TYPE__CT_STATS = 70,
   MESSAGE_T__OPCODE__OP_ERROR = 99
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(MESSAGE_T__OPCODE)
 } MessageT__Opcode;
@@ -40,7 +41,8 @@ typedef enum _MessageT__CType {
   MESSAGE_T__C_TYPE__CT_RESULT = 40,
   MESSAGE_T__C_TYPE__CT_KEYS = 50,
   MESSAGE_T__C_TYPE__CT_TABLE = 60,
-  MESSAGE_T__C_TYPE__CT_NONE = 70
+  MESSAGE_T__C_TYPE__CT_NONE = 70,
+  MESSAGE_T__C_TYPE__CT_STATS = 80
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(MESSAGE_T__C_TYPE)
 } MessageT__CType;
 
@@ -71,7 +73,7 @@ struct  MessageT
   size_t n_entries;
   EntryT **entries;
 };
-#define MESSAGE_T__INIT \
+#define MESSAGE_T__INIT \ // incluir CT_STATS??????
  { PROTOBUF_C_MESSAGE_INIT (&message_t__descriptor) \
     , MESSAGE_T__OPCODE__OP_BAD, MESSAGE_T__C_TYPE__CT_BAD, NULL, (char *)protobuf_c_empty_string, {0,NULL}, 0, 0,NULL, 0,NULL }
 

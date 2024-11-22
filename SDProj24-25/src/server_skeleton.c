@@ -46,7 +46,7 @@ int server_skeleton_destroy(struct table_t *table){
  * e utiliza a mesma estrutura MessageT para devolver o resultado.
  * Retorna 0 (OK) ou -1 em caso de erro.
  */
-int invoke(struct MessageT *msg, struct table_t *table){		// incluir estatísticas
+int invoke(struct MessageT *msg, struct table_t *table){		// incluir trataemnto da OP_STATS
 
 	if (!msg  || !table) return -1;
 
@@ -233,6 +233,12 @@ int invoke(struct MessageT *msg, struct table_t *table){		// incluir estatístic
 		msg->c_type = MESSAGE_T__C_TYPE__CT_TABLE;
 		//printf("GetTable realizado com sucesso!\n");
 		list_free_keys(keys);
+
+	} else if (msg->opcode == MESSAGE_T__C_TYPE__OP_STATS) { // ACABARRRR
+
+		// TODO
+
 	}
+
 	return 0;
 }
