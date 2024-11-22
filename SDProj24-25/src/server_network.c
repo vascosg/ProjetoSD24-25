@@ -20,6 +20,7 @@
 #include "../include/htmessages.pb-c.h"
 #include "../include/server_network.h"
 #include "../include/stats.h"
+#include "../include/server_network-private.h"
 
 #define BUFFER_SIZE 1024
 
@@ -74,6 +75,7 @@ int network_main_loop(int listening_socket, struct table_t *table){ // a listeni
 	int client_socket;
 	struct sockaddr_in client_addr;
 	socklen_t client_len= sizeof(client_addr);
+
 	struct statistics_t *stats = statistics_create();
 	clock_t inicio_tempo, fim_tempo;
 	double duracao;
@@ -81,160 +83,135 @@ int network_main_loop(int listening_socket, struct table_t *table){ // a listeni
 
 	while ((client_socket = accept(listening_socket,(struct sockaddr *) &client_addr, &client_len)) != -1) {
 
-		printf("Client connection established\n");
-
-		//stats->n_clients++; TODO confirmar
-
-		while(1) {
-			// Recebe uma mensagem do cliente
-			struct MessageT *request = network_receive(client_socket);
-			if (!request) {
-
-				if (errno == 0) break;
-				//perror("Erro ao receber mensagem\n");
-				message_t__free_unpacked(request, NULL);
-				//close(client_socket);
-				//return -1;
+		while (1) {
+			int client_socket = accept(listening_socket, (struct sockaddr *)&client_addr, &client_len);
+			if (client_socket < 0) {
+				perror("Erro ao aceitar conexão");
+				continue;
 			}
 
-			if(request->opcode == MESSAGE_T__OPCODE__OP_STATS) {
-
-				if (!stats) { // Se houver problema no stat do server
-					request->opcode = MESSAGE_T__OPCODE__OP_ERROR;
-					request->c_type = MESSAGE_T__C_TYPE__CT_NONE;
-
-				} else { // Formatar a menssagem para enviar com a resposa a stats
-					request->opcode = MESSAGE_T__OPCODE__OP_STATS + 1;
-					request->c_type = MESSAGE_T__C_TYPE__CT_STATS;
-					request->stats = *stats;
-				}
-			} else {
-
-				inicio_tempo = clock();
-
-				// Processa a mensagem com a tabela e o skeleton (implementação depende do contexto)
-				invoke(request, table);  // Supõe que esta função exista
-				// Verifica se ocorreu um erro
-
-				fim_tempo = clock();
-
-				duracao = (double) fim_tempo - inicio_tempo;
-				stats->time_spent += duracao;
-				stats->n_ops++;
+			// Aloca memória para os argumentos da thread
+			struct client_thread_args *args = malloc(sizeof(struct client_thread_args));
+			if (!args) {
+				perror("Erro ao alocar memória para os argumentos da thread");
+				close(client_socket);
+				continue;
 			}
 
-			// Envia a resposta ao cliente
-			network_send(client_socket, request);
+			args->client_socket = client_socket;
+			args->table = table;
+			args->stats = stats;
 
-			message_t__free_unpacked(request, NULL);
+			// Cria a thread
+			pthread_t client_thread;
+			if (pthread_create(&client_thread, NULL, client_handler, (void *)args) != 0) {
+				perror("Erro ao criar thread");
+				close(client_socket);
+				free(args);
+				continue;
+			}
 		}
 
-		close(client_socket);
-
-		//stats->n_clients--; TODO confirmar
-		printf("Client connection closed\n");
+		return 0;
 	}
-
-	return 0;
 }
+	/* A função network_receive() deve:
+	 * - Ler os bytes da rede, a partir do client_socket indicado;
+	 * - De-serializar estes bytes e construir a mensagem com o pedido,
+	 * reservando a memória necessária para a estrutura MessageT.
+	 * Retorna a mensagem com o pedido ou NULL em caso de erro.
+	 */
+	struct MessageT *network_receive(int client_socket){
 
-/* A função network_receive() deve:
- * - Ler os bytes da rede, a partir do client_socket indicado;
- * - De-serializar estes bytes e construir a mensagem com o pedido,
- * reservando a memória necessária para a estrutura MessageT.
- * Retorna a mensagem com o pedido ou NULL em caso de erro.
- */
-struct MessageT *network_receive(int client_socket){
+		// 1. Receber o tamanho da resposta (2 bytes - short)
+		short net_response_size;
+		if (read_all(client_socket, &net_response_size, sizeof(net_response_size)) != sizeof(net_response_size)) {
+			//perror("Erro ao receber o tamanho da resposta\n");
+			return NULL;
+		}
+		uint16_t response_size = ntohs(net_response_size); // Converte para host byte order
 
-	// 1. Receber o tamanho da resposta (2 bytes - short)
-	short net_response_size;
-	if (read_all(client_socket, &net_response_size, sizeof(net_response_size)) != sizeof(net_response_size)) {
-		//perror("Erro ao receber o tamanho da resposta\n");
-		return NULL;
-	}
-	uint16_t response_size = ntohs(net_response_size); // Converte para host byte order
+		// 2. Receber a resposta serializada
+		uint8_t *response_buffer = malloc(response_size);
+		if (!response_buffer) {
+			//perror("Erro ao alocar memória para a resposta\n");
+			return NULL;
+		}
 
-	// 2. Receber a resposta serializada
-	uint8_t *response_buffer = malloc(response_size);
-	if (!response_buffer) {
-		//perror("Erro ao alocar memória para a resposta\n");
-		return NULL;
-	}
+		if (read_all(client_socket, response_buffer, response_size) != response_size) {
+			//perror("Erro ao receber a resposta\n");
+			free(response_buffer);
+			return NULL;
+		}
 
-	if (read_all(client_socket, response_buffer, response_size) != response_size) {
-		//perror("Erro ao receber a resposta\n");
-		free(response_buffer);
-		return NULL;
-	}
+		// 3. Deserializar a resposta
+		struct MessageT *response_msg = message_t__unpack(NULL, response_size, response_buffer);
+		free(response_buffer); // Liberta o buffer após a deserialização
 
-	// 3. Deserializar a resposta
-	struct MessageT *response_msg = message_t__unpack(NULL, response_size, response_buffer);
-	free(response_buffer); // Liberta o buffer após a deserialização
+		if (!response_msg) {
+			//perror("Erro ao deserializar a resposta\n");
+			return NULL;
+		}
 
-	if (!response_msg) {
-		//perror("Erro ao deserializar a resposta\n");
-		return NULL;
-	}
-
-	// 4. Retorna a mensagem de resposta
-	return response_msg;
-}
-
-/* A função network_send() deve:
- * - Serializar a mensagem de resposta contida em msg;
- * - Enviar a mensagem serializada, através do client_socket.
- * Retorna 0 (OK) ou -1 em caso de erro.
- */
-int network_send(int client_socket, struct MessageT *msg){
-
-	if (client_socket < 0 || !msg) return -1;
-
-	// 1. Serializar a mensagem
-	unsigned int len = message_t__get_packed_size(msg); // Tamanho da mensagem serializada
-	if (!len) return -1;
-	void* buf = malloc(len);
-	if (!buf) {  // Verifica se a alocação foi bem sucedida
-		//perror("Erro ao alocar memória para a mensagem");
-		return -1;
+		// 4. Retorna a mensagem de resposta
+		return response_msg;
 	}
 
-	int msg_len = message_t__pack(msg, buf); // Serializa a mensagem para o buffer
-	if (msg_len != len) { // verifica se o tamanho da mensagem serializada é o esperado
-		//perror("Erro ao serializar a mensagem\n");
-		free(buf);
-		return -1;
+	/* A função network_send() deve:
+	 * - Serializar a mensagem de resposta contida em msg;
+	 * - Enviar a mensagem serializada, através do client_socket.
+	 * Retorna 0 (OK) ou -1 em caso de erro.
+	 */
+	int network_send(int client_socket, struct MessageT *msg){
+
+		if (client_socket < 0 || !msg) return -1;
+
+		// 1. Serializar a mensagem
+		unsigned int len = message_t__get_packed_size(msg); // Tamanho da mensagem serializada
+		if (!len) return -1;
+		void* buf = malloc(len);
+		if (!buf) {  // Verifica se a alocação foi bem sucedida
+			//perror("Erro ao alocar memória para a mensagem");
+			return -1;
+		}
+
+		int msg_len = message_t__pack(msg, buf); // Serializa a mensagem para o buffer
+		if (msg_len != len) { // verifica se o tamanho da mensagem serializada é o esperado
+			//perror("Erro ao serializar a mensagem\n");
+			free(buf);
+			return -1;
+		}
+
+		// 2. Enviar o tamanho da mensagem (2 bytes - short)
+
+		short net_msg_size = htons(len); // Converte para network byte order
+
+		if (write_all(client_socket, &net_msg_size, sizeof(net_msg_size)) != sizeof(net_msg_size)) {
+			//perror("Erro ao enviar o tamanho da mensagem\n");
+			free(buf);
+			return -1;
+		}
+
+		// 3. Enviar a mensagem serializada
+		if (write_all(client_socket, buf, len) != len) {
+			//perror("Erro ao enviar a mensagem\n");
+			free(buf);
+			return -1;
+		}
+
+		free(buf); // Liberta o buffer após o envio
+		return 0;
 	}
 
-	// 2. Enviar o tamanho da mensagem (2 bytes - short)
+	/* Liberta os recursos alocados por server_network_init(), nomeadamente
+	 * fechando o socket passado como argumento.
+	 * Retorna 0 (OK) ou -1 em caso de erro.
+	 */
+	int server_network_close(int socket){
 
-	short net_msg_size = htons(len); // Converte para network byte order
-
-	if (write_all(client_socket, &net_msg_size, sizeof(net_msg_size)) != sizeof(net_msg_size)) {
-		//perror("Erro ao enviar o tamanho da mensagem\n");
-		free(buf);
-		return -1;
+		if (close(socket) < 0) {
+			//perror("Erro ao fechar o socket\n");
+			return -1;
+		}
+		return 0;
 	}
-
-	// 3. Enviar a mensagem serializada
-	if (write_all(client_socket, buf, len) != len) {
-		//perror("Erro ao enviar a mensagem\n");
-		free(buf);
-		return -1;
-	}
-
-	free(buf); // Liberta o buffer após o envio
-	return 0;
-}
-
-/* Liberta os recursos alocados por server_network_init(), nomeadamente
- * fechando o socket passado como argumento.
- * Retorna 0 (OK) ou -1 em caso de erro.
- */
-int server_network_close(int socket){
-
-	if (close(socket) < 0) {
-		//perror("Erro ao fechar o socket\n");
-		return -1;
-	}
-	return 0;
-}
