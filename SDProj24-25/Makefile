@@ -5,7 +5,7 @@ INC_DIR = include
 
 TEST_SRC_FILES = client_hashtable server_hashtable
 
-MODULES = block entry list serialization table table-private client_network client_stub server_network server_skeleton htmessages.pb-c message-private
+MODULES = block entry list serialization table table-private client_network client_stub server_network server_skeleton htmessages.pb-c message-private stats server_network-private
 
 TEST_EXECUTABLES = $(addprefix $(BIN_DIR)/, $(TEST_SRC_FILES))
 
@@ -29,7 +29,10 @@ $(TEST_OBJ_FILES): $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(SRC_DIR)/htmessages.pb-c.c: htmessages.proto
+	@protoc --c_out=$(SRC_DIR) --proto_path=. $<
+
 clean:
-	rm -rf $(OBJ_DIR)/*.o $(BIN_DIR)/*
+	rm -rf $(OBJ_DIR)/*.o $(BIN_DIR)/* $(SRC_DIR)/htmessages.pb-c.c $(SRC_DIR)/htmessages.pb-c.h
 
 .PHONY: all clean
