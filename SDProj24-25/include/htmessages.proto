@@ -19,19 +19,19 @@ message message_t				/* Formato da mensagem MessageT */
 			  OP_SIZE     = 40;
 			  OP_GETKEYS  = 50;
 			  OP_GETTABLE = 60;
-			  OP_STATS	  = 70;
+			  OP_STATS = 70;
 			  OP_ERROR    = 99;
 		}
 		enum C_type {  			/* Códigos para conteúdos da mensagem */
 	  		  CT_BAD    = 0;
 	 		  CT_ENTRY  = 10;
 	  		  CT_KEY    = 20;
-	  	      CT_VALUE  = 30;
+	  	          CT_VALUE  = 30;
 	  		  CT_RESULT = 40;
  	  		  CT_KEYS   = 50;
-   	  	      CT_TABLE  = 60;
+   	  	          CT_TABLE  = 60;
 	  		  CT_NONE   = 70;
-			  CT_STATS  = 80;
+	  		  CT_STATS = 80;
     	}
 
 /* Campos disponíveis na mensagem genérica (cada mensagem concreta, de
@@ -44,6 +44,9 @@ message message_t				/* Formato da mensagem MessageT */
 		string			key = 4;
 		bytes			value = 5;
 		sint32			result = 6;
-		repeated string keys = 7;
-		repeated entry_t entries = 8;
+		sint32                  ops = 7;
+		double                  duration = 8;
+		sint32                  clients = 9;
+		repeated string keys = 10;
+		repeated entry_t entries = 11;
 };

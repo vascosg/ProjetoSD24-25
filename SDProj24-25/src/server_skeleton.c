@@ -15,6 +15,9 @@
 #include "../include/table.h"
 #include "../include/htmessages.pb-c.h"
 #include "../include/stats.h"
+#include <pthread.h>
+
+pthread_mutex_t table_mutex = PTHREAD_MUTEX_INITIALIZER;	// mutex para a tabela
 
 /* Inicia o skeleton da tabela. 
  * O main() do servidor deve chamar esta função antes de poder usar a 
@@ -63,7 +66,9 @@ int invoke(struct MessageT *msg, struct table_t *table){		// incluir trataemnto 
 		}
 
 		// Colocar a entrada na tabela
+		pthread_mutex_lock(&table_mutex);
 		int result = table_put(table, msg->entry->key, bloco);
+		pthread_mutex_unlock(&table_mutex);
 		if (result < 0) {
 			//printf("Erro ao fazer o put na tabela\n");
 			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
@@ -109,7 +114,9 @@ int invoke(struct MessageT *msg, struct table_t *table){		// incluir trataemnto 
 		}
 
 		// Remove a entrada da tabela
+		pthread_mutex_lock(&table_mutex);
 		int result = table_remove(table, msg->key);
+		pthread_mutex_unlock(&table_mutex);
 		if (result != 0) {
 			//printf("Erro ao eliminar entrada na tabela\n");
 			msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;

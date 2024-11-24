@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <time.h>
+#include <pthread.h>
 #include "../include/server_network-private.h"
 #include "../include/server_skeleton.h"
 #include "../include/message-private.h"
@@ -20,6 +21,8 @@
 #include "../include/htmessages.pb-c.h"
 #include "../include/server_network.h"
 #include "../include/stats.h"
+
+pthread_mutex_t stats_mutex = PTHREAD_MUTEX_INITIALIZER;	// mutex para as estatisticas
 
 void *client_handler(void *args){
 
@@ -33,7 +36,9 @@ void *client_handler(void *args){
 
 	printf("Client connection established\n");
 
+	pthread_mutex_lock(&stats_mutex);
 	stats->n_clients++;
+	pthread_mutex_unlock(&stats_mutex);
 
 	while(1) {
 		// Recebe uma mensagem do cliente
@@ -57,9 +62,11 @@ void *client_handler(void *args){
 			} else { // Formatar a menssagem para enviar com a resposa a stats
 				request->opcode = MESSAGE_T__OPCODE__OP_STATS + 1;
 				request->c_type = MESSAGE_T__C_TYPE__CT_STATS;
+				pthread_mutex_lock(&stats_mutex);
 				request->ops = stats->n_ops;
 				request->duration = stats->time_spent;
 				request->clients = stats->n_clients;
+				pthread_mutex_unlock(&stats_mutex);
 			}
 		} else {
 
@@ -72,8 +79,10 @@ void *client_handler(void *args){
 			fim_tempo = clock();
 
 			duracao = (double) fim_tempo - inicio_tempo;
+			pthread_mutex_lock(&stats_mutex);
 			stats->time_spent += duracao;
 			stats->n_ops++;
+			pthread_mutex_unlock(&stats_mutex);
 		}
 
 		// Envia a resposta ao cliente
@@ -83,7 +92,10 @@ void *client_handler(void *args){
 
 	close(client_socket);
 
+	pthread_mutex_lock(&stats_mutex);
 	stats->n_clients--;
+	pthread_mutex_unlock(&stats_mutex);
+
 	printf("Client connection closed\n");
 
 	return NULL;
