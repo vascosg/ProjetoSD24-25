@@ -30,9 +30,9 @@ $(TEST_OBJ_FILES): $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(SRC_DIR)/htmessages.pb-c.c: htmessages.proto
-	protoc-c --c_out= $(SRC_DIR) $<
+	@protoc --c_out=$(SRC_DIR) --proto_path=. $<
 
 clean:
-	rm -rf $(OBJ_DIR)/*.o $(BIN_DIR)/*
+	rm -rf $(OBJ_DIR)/*.o $(BIN_DIR)/* $(SRC_DIR)/htmessages.pb-c.c $(SRC_DIR)/htmessages.pb-c.h
 
 .PHONY: all clean
