@@ -334,6 +334,9 @@ void rtable_free_entries(struct entry_t **entries) {
 	return rtable;
 }*/
 
+/* Obtém as estatísticas do servidor.
+ * Retorna 0 (OK) ou -1 em caso de erro.
+ */
 int rtable_stats(struct rtable_t *rtable) {	// rever!!!!
 
 	if (!rtable) return -1;

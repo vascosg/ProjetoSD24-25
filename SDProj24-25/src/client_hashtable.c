@@ -17,11 +17,19 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <errno.h>
+#include <pthread.h>
 
 #define MAX_COMMAND_LEN 1024
 #define MAX_TOKENS 3
+#define USAGE_MESSAGE "Usage: p[ut] <key> <value> | g[et] <key> | d[el] <key> | s[ize] | [get]k[eys] | [get]t[able] | st[ats] | q[uit]\n"
 
-int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
+// inicializa mutexes
+pthread_mutex_t table_mutex = PTHREAD_MUTEX_INITIALIZER;	// mutex para a tabela
+pthread_mutex_t stats_mutex = PTHREAD_MUTEX_INITIALIZER;	// mutex para as estatisticas
+
+int main(int argc, char **argv) {
+
+	// Mutexes already initialized with PTHREAD_MUTEX_INITIALIZER
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <server>:<port>\n", argv[0]);
@@ -44,7 +52,7 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 
 		// Lê o comando do utilizador
 		if (fgets(command, MAX_COMMAND_LEN, stdin) == NULL) {
-			printf("Usage: p[ut] <key> <value> | g[et] <key> | d[el] <key> | s[ize] | [get]k[eys] | [get]t[able] | q[uit]\n");
+			printf(USAGE_MESSAGE);
 			continue;
 		}
 
@@ -65,21 +73,10 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 		// Verifica se o comando é 'quit'
 		if (token != NULL &&  ( strcmp(token, "quit") == 0 || strcmp(token,"q") == 0 ) ) {
 			printf("Bye, bye!\n");
+			rtable_disconnect(rt);	// Termina a conexão com o servidor (TODO e se falhar?)
 			break;
 		}
 
-		// Guarda os tokens que vao ate cada espaco
-		while (token != NULL && token_count < MAX_TOKENS) {
-			// Aloca memória para cada token e copia o conteúdo
-			tokens[token_count] = strdup(token); // Usar strdup para duplicar a string
-			token_count++;
-			token = strtok(NULL, " "); // Próximo token
-		}
-
-		if (token != NULL &&  ( strcmp(token, "quit") == 0 || strcmp(token,"q") == 0 ) ) {
-			printf("Bye, bye!\n");
-			break;
-		}
 
 		// Guarda os tokens que vao ate cada espaco
 		while (token != NULL && token_count < MAX_TOKENS) {
@@ -93,7 +90,8 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 
 			if( strcmp(tokens[0], "put") == 0 || (strcmp(tokens[0], "p") == 0)  ){
 
-				if (token_count < 3 || !tokens[1] || !tokens[2] ) { // Verifica se o comando put tem os argumentos necessários
+				// Verifica se o comando put tem os argumentos necessários
+				if (token_count < 3 || !tokens[1] || !tokens[2] ) {
 					printf("Invalid arguments. Usage: put <key> <value>\n");
 					continue;
 				}
@@ -101,41 +99,64 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 				struct block_t *block = block_create(sizeof(tokens[2]),tokens[2]);
 				struct entry_t *entry = entry_create(tokens[1],block);
 
+				pthread_mutex_lock(&table_mutex);
+
+				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					block_destroy(block);
+					entry_destroy(entry);
+					pthread_mutex_unlock(&table_mutex);
 					break;
 				}
+
 				rtable_put(rt,entry);
+				pthread_mutex_unlock(&table_mutex);
 
-			} else if (( strcmp(tokens[0], "get") == 0 || (strcmp(tokens[0], "g") == 0) ) ) { //TODO preparar para o caso de n encontrar a entrada
+			} else if (( strcmp(tokens[0], "get") == 0 || (strcmp(tokens[0], "g") == 0) ) ) {
 
-				if (token_count < 2 || !tokens[1]  ) { // Verifica se o comando get tem os argumentos necessários
+				// Verifica se o comando get tem os argumentos necessários
+				if (token_count < 2 || !tokens[1]  ) {
 					printf("Invalid arguments. Usage: get <key>\n");
 					continue;
 				}
 
+				pthread_mutex_lock(&table_mutex);
+
+				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
 				struct block_t *block_received = rtable_get(rt, tokens[1]);
+				pthread_mutex_unlock(&table_mutex);
+
+				// Verifica se a operação get foi bem sucedida
 				if (!block_received) {
 					printf("Error in rtable_get or key not found!\n");
 					continue;
 				}
 
-			} else if (( strcmp(tokens[0], "del") == 0 || (strcmp(tokens[0], "d") == 0) )  ) { // TODO Prepatar para quando n tem a entry para deletar
+			} else if (( strcmp(tokens[0], "del") == 0 || (strcmp(tokens[0], "d") == 0) )  ) {
 
-				if (token_count < 2 || !tokens[1]  ) { // Verifica se o comando del tem os argumentos necessários
+				// Verifica se o comando del tem os argumentos necessários
+				if (token_count < 2 || !tokens[1]  ) {
 					printf("Invalid arguments. Usage: del <key>\n");
 					continue;
 				}
 
+				pthread_mutex_lock(&table_mutex);
+
+				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
 				int del_result = rtable_del(rt,tokens[1]);
+				pthread_mutex_unlock(&table_mutex);
 
+				// Verifica se a operação del foi bem sucedida
 				if (del_result != 0) {
 					printf("Error in rtable_del or key not found! \n");
 					continue;
@@ -144,58 +165,90 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 
 			} else if (( strcmp(tokens[0], "size") == 0 || (strcmp(tokens[0], "s") == 0))) {
 
+				pthread_mutex_lock(&table_mutex);
+
+				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
 				int size = rtable_size(rt);
+				pthread_mutex_unlock(&table_mutex);
 
 				if (size == -1) {
+					printf("Error in rtable_size! \n");
+					continue;
 				}
 
 				printf("Table size: %d\n",size);
 
-			} else if (( strcmp(tokens[0], "getkeys") == 0 || (strcmp(tokens[0], "k") == 0) )) { //TODO da erro no list free keys tiver 5 elementos...
+			} else if (( strcmp(tokens[0], "getkeys") == 0 || (strcmp(tokens[0], "k") == 0) )) {
 
+				pthread_mutex_lock(&table_mutex);
+
+				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
 				size_t num_keys = rtable_size(rt);
 				char **keys = rtable_get_keys(rt);
+				pthread_mutex_unlock(&table_mutex);
 
+				// Verifica se a operação get_keys foi bem sucedida
 				if (keys) {
 
+					// Imprime as chaves
 					for (size_t i = 0; i < num_keys; i++) {
 						printf("%s\n", keys[i]);
 					}
-				}
 
+				}
 
 			} else if ((strcmp(tokens[0], "gettable") == 0 || (strcmp(tokens[0], "t") == 0)) ) {
 
+				pthread_mutex_lock(&table_mutex);
+
+				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
-				rtable_get_table(rt);
+				rtable_get_table(rt);	// TODO não estamos a usar o retorno do get_table
+				pthread_mutex_unlock(&table_mutex);
 
 
-			} else if ((strcmp(tokens[0], "stats") == 0)) {
+			} else if ((strcmp(tokens[0], "stats") == 0) || (strcmp(tokens[0], "st") == 0)) {
 
+				pthread_mutex_lock(&stats_mutex);
+
+				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					pthread_mutex_unlock(&stats_mutex);
 					break;
 				}
 				
-				rtable_stats(rt);
+				int stats_result = rtable_stats(rt);
+				pthread_mutex_unlock(&stats_mutex);
 
+				// Verifica se a operação del foi bem sucedida
+				if (stats_result != 0) {
+					printf("Error in rtable_stats! \n");
+					continue;
+				}
 
-			}else {
-				printf("Usage: p[ut] <key> <value> | g[et] <key> | d[el] <key> | s[ize] | [get]k[eys] | [get]t[able] | q[uit]\n");
+			} else {
+				printf(USAGE_MESSAGE);
 			}
 
 		}
 	}
+
+	pthread_mutex_destroy(&table_mutex);
+	pthread_mutex_destroy(&stats_mutex);
 
 	return 0;
 
