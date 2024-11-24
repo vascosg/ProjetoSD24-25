@@ -78,7 +78,7 @@ struct  MessageT
 // incluir CT_STATS?????? acho que nao, o op bad e ct bad sao substituidos por op state ct stat depois
 #define MESSAGE_T__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&message_t__descriptor) \
-    , MESSAGE_T__OPCODE__OP_BAD, MESSAGE_T__C_TYPE__CT_BAD, NULL, (char *)protobuf_c_empty_string, {0,NULL}, 0, 0,NULL, 0,NULL }
+    , MESSAGE_T__OPCODE__OP_BAD, MESSAGE_T__C_TYPE__CT_BAD, NULL, (char *)protobuf_c_empty_string, {0,NULL}, 0, 0,NULL, 0,NULL, NULL }
 
 
 /* EntryT methods */

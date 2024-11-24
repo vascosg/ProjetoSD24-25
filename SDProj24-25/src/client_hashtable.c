@@ -13,6 +13,7 @@
 #include "../include/entry.h"
 #include "../include/block.h"
 #include "../include/client_stub-private.h"
+#include "../include/stats.h"
 #include <sys/socket.h>
 #include <unistd.h>
 #include <errno.h>
@@ -89,7 +90,7 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 		}
 
 		if(token_count > 0) {
-			
+
 			if( strcmp(tokens[0], "put") == 0 || (strcmp(tokens[0], "p") == 0)  ){
 
 				if (token_count < 3 || !tokens[1] || !tokens[2] ) { // Verifica se o comando put tem os argumentos necessários
@@ -101,7 +102,6 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 				struct entry_t *entry = entry_create(tokens[1],block);
 
 				if (rt->sockfd < 0) {
-					//perror("Socket invalido\n");
 					break;
 				}
 				rtable_put(rt,entry);
@@ -114,7 +114,6 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 				}
 
 				if (rt->sockfd < 0) {
-					//perror("Socket invalido\n");
 					break;
 				}
 
@@ -132,7 +131,6 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 				}
 
 				if (rt->sockfd < 0) {
-					//perror("Socket invalido\n");
 					break;
 				}
 
@@ -147,14 +145,12 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 			} else if (( strcmp(tokens[0], "size") == 0 || (strcmp(tokens[0], "s") == 0))) {
 
 				if (rt->sockfd < 0) {
-					//perror("Socket invalido\n");
 					break;
 				}
 
 				int size = rtable_size(rt);
 
 				if (size == -1) {
-					//printf("Erro ao obter o numero de elementos na tabela \n");
 				}
 
 				printf("Table size: %d\n",size);
@@ -162,7 +158,6 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 			} else if (( strcmp(tokens[0], "getkeys") == 0 || (strcmp(tokens[0], "k") == 0) )) { //TODO da erro no list free keys tiver 5 elementos...
 
 				if (rt->sockfd < 0) {
-					//perror("Socket invalido\n");
 					break;
 				}
 
@@ -170,7 +165,7 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 				char **keys = rtable_get_keys(rt);
 
 				if (keys) {
-					
+
 					for (size_t i = 0; i < num_keys; i++) {
 						printf("%s\n", keys[i]);
 					}
@@ -180,17 +175,21 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 			} else if ((strcmp(tokens[0], "gettable") == 0 || (strcmp(tokens[0], "t") == 0)) ) {
 
 				if (rt->sockfd < 0) {
-					//perror("Socket invalido\n");
 					break;
 				}
 
-				struct entry_t ** table_entries = rtable_get_table(rt);
+				rtable_get_table(rt);
 
-				if(!table_entries) {
-					//printf("Erro ao obter as entradas\n");
+
+			} else if ((strcmp(tokens[0], "stats") == 0)) {
+
+				if (rt->sockfd < 0) {
+					break;
 				}
-
 				
+				rtable_stats(rt);
+
+
 			}else {
 				printf("Usage: p[ut] <key> <value> | g[et] <key> | d[el] <key> | s[ize] | [get]k[eys] | [get]t[able] | q[uit]\n");
 			}

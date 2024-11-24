@@ -1,10 +1,10 @@
-/*
- * server_network-private.c
- *
- *  Created on: Nov 22, 2024
- *      Author: freitas
- */
-
+/* ------------------------------------
+---------------  SD-054 ---------------
+    Filipa Inácio       fc59788
+    Tomás Canilhas      fc59794
+    Vasco Baldé         fc58174
+---------------------------------------
+------------------------------------ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,7 +33,7 @@ void *client_handler(void *args){
 
 	printf("Client connection established\n");
 
-	//stats->n_clients++; TODO confirmar
+	stats->n_clients++;
 
 	while(1) {
 		// Recebe uma mensagem do cliente
@@ -76,12 +76,13 @@ void *client_handler(void *args){
 
 		// Envia a resposta ao cliente
 		network_send(client_socket, request);
-
 		message_t__free_unpacked(request, NULL);
 	}
 
 	close(client_socket);
 
-	//stats->n_clients--; TODO confirmar
+	stats->n_clients--;
 	printf("Client connection closed\n");
+
+	return NULL;
 }
