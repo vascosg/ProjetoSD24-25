@@ -57,7 +57,9 @@ void *client_handler(void *args){
 			} else { // Formatar a menssagem para enviar com a resposa a stats
 				request->opcode = MESSAGE_T__OPCODE__OP_STATS + 1;
 				request->c_type = MESSAGE_T__C_TYPE__CT_STATS;
-				request->stats = *stats;
+				request->ops = stats->n_ops;
+				request->duration = stats->time_spent;
+				request->clients = stats->n_clients;
 			}
 		} else {
 

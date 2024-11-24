@@ -6,7 +6,7 @@
 ---------------------------------------
 ------------------------------------ */
 
-/*#include <stdio.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "../include/client_network.h"
@@ -199,4 +199,4 @@ int main(int argc, char **argv) {	// TODO incluir tratamento da OP_STATS
 
 	return 0;
 
-}*/
+}

@@ -350,9 +350,9 @@ int rtable_stats(struct rtable_t *rtable) {	// rever!!!!
 		return -1;
 	}
 
-    printf("Número de operações (n_ops): %d\n", response->stats.n_ops);
-    printf("Tempo total gasto (time_spent): %.2f segundos\n", response->stats.time_spent);
-    printf("Número de clientes conectados (n_clients): %d\n", response->stats.n_clients);
+    printf("Número de operações (n_ops): %d\n", response->ops);
+    printf("Tempo total gasto (time_spent): %.2f segundos\n", response->duration);
+    printf("Número de clientes conectados (n_clients): %d\n", response->clients);
 
 	return 0;
 }

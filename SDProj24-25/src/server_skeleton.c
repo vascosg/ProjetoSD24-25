@@ -235,9 +235,6 @@ int invoke(struct MessageT *msg, struct table_t *table){		// incluir trataemnto 
 		//printf("GetTable realizado com sucesso!\n");
 		list_free_keys(keys);
 
-	} else if (msg->opcode == MESSAGE_T__OPCODE__OP_STATS) { //TODO ACABARRRR
-
-
 	}
 
 	return 0;
