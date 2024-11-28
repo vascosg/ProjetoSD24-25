@@ -13,26 +13,29 @@ OBJ_FILES = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(MODULES)))
 TEST_OBJ_FILES = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(TEST_SRC_FILES)))
 
 CC = gcc
-CFLAGS = -Wall -g -I$(INC_DIR) 
+CFLAGS = -Wall -g -I$(INC_DIR)
 
 all: $(TEST_EXECUTABLES)
 
+# Rule to generate .c and .h from .proto
+$(SRCDIR)/%.pb-c.c $(INCDIR)/%.pb-c.h: %.proto
+	mkdir -p $(SRCDIR) $(INCDIR)
+	$(PROTOC) --proto_path=. --c_out=$(SRCDIR) $<
+
+
 $(BIN_DIR)/%: $(OBJ_FILES) $(OBJ_DIR)/%.o
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) $^ -lprotobuf-c -o $@
+	$(CC) $(CFLAGS) $^ -o $@ -lprotobuf-c
 
 $(OBJ_FILES): $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)
-	$(CC) $(CFLAGS) -c $< -lprotobuf-c -o $@
+	$(CC) $(CFLAGS) -c $< -o $@ -lprotobuf-c
 
 $(TEST_OBJ_FILES): $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(SRC_DIR)/htmessages.pb-c.c: htmessages.proto
-	@protoc --c_out=$(SRC_DIR) --proto_path=. $<
-
 clean:
-	rm -rf $(OBJ_DIR)/*.o $(BIN_DIR)/* $(SRC_DIR)/htmessages.pb-c.c $(SRC_DIR)/htmessages.pb-c.h
+	rm -rf $(OBJ_DIR)/*.o $(BIN_DIR)/* $(SRC_DIR)/*.pb-c.c $(INC_DIR)/*.pb-c.h
 
 .PHONY: all clean
