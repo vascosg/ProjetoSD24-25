@@ -243,6 +243,5 @@ int invoke(struct MessageT *msg, struct table_t *table){		// incluir trataemnto 
 		list_free_keys(keys);
 
 	}
-
 	return 0;
 };

@@ -17,12 +17,19 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <errno.h>
+#include <pthread.h>
 
 #define MAX_COMMAND_LEN 1024
 #define MAX_TOKENS 3
 #define USAGE_MESSAGE "Usage: p[ut] <key> <value> | g[et] <key> | d[el] <key> | s[ize] | [get]k[eys] | [get]t[able] | st[ats] | q[uit]\n"
 
+// inicializa mutexes
+//pthread_mutex_t table_mutex = PTHREAD_MUTEX_INITIALIZER;	// mutex para a tabela
+//pthread_mutex_t stats_mutex = PTHREAD_MUTEX_INITIALIZER;	// mutex para as estatisticas
+
 int main(int argc, char **argv) {
+
+	// Mutexes already initialized with PTHREAD_MUTEX_INITIALIZER
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <server>:<port>\n", argv[0]);
@@ -92,14 +99,18 @@ int main(int argc, char **argv) {
 				struct block_t *block = block_create(sizeof(tokens[2]),tokens[2]);
 				struct entry_t *entry = entry_create(tokens[1],block);
 
+				//pthread_mutex_lock(&table_mutex);
+
 				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
 					block_destroy(block);
 					entry_destroy(entry);
+					//pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
 				rtable_put(rt,entry);
+				//pthread_mutex_unlock(&table_mutex);
 
 			} else if (( strcmp(tokens[0], "get") == 0 || (strcmp(tokens[0], "g") == 0) ) ) {
 
@@ -109,12 +120,16 @@ int main(int argc, char **argv) {
 					continue;
 				}
 
+				//pthread_mutex_lock(&table_mutex);
+
 				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					//pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
 				struct block_t *block_received = rtable_get(rt, tokens[1]);
+				//pthread_mutex_unlock(&table_mutex);
 
 				// Verifica se a operação get foi bem sucedida
 				if (!block_received) {
@@ -130,13 +145,16 @@ int main(int argc, char **argv) {
 					continue;
 				}
 
+				//pthread_mutex_lock(&table_mutex);
 
 				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					//pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
 				int del_result = rtable_del(rt,tokens[1]);
+				//pthread_mutex_unlock(&table_mutex);
 
 				// Verifica se a operação del foi bem sucedida
 				if (del_result != 0) {
@@ -147,12 +165,16 @@ int main(int argc, char **argv) {
 
 			} else if (( strcmp(tokens[0], "size") == 0 || (strcmp(tokens[0], "s") == 0))) {
 
+				//pthread_mutex_lock(&table_mutex);
+
 				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					//pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
 				int size = rtable_size(rt);
+				//pthread_mutex_unlock(&table_mutex);
 
 				if (size == -1) {
 					printf("Error in rtable_size! \n");
@@ -163,13 +185,17 @@ int main(int argc, char **argv) {
 
 			} else if (( strcmp(tokens[0], "getkeys") == 0 || (strcmp(tokens[0], "k") == 0) )) {
 
+				//pthread_mutex_lock(&table_mutex);
+
 				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					//pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
 				size_t num_keys = rtable_size(rt);
 				char **keys = rtable_get_keys(rt);
+				//pthread_mutex_unlock(&table_mutex);
 
 				// Verifica se a operação get_keys foi bem sucedida
 				if (keys) {
@@ -183,22 +209,30 @@ int main(int argc, char **argv) {
 
 			} else if ((strcmp(tokens[0], "gettable") == 0 || (strcmp(tokens[0], "t") == 0)) ) {
 
+				//pthread_mutex_lock(&table_mutex);
+
 				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					//pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
 				rtable_get_table(rt);	// TODO não estamos a usar o retorno do get_table
+				//pthread_mutex_unlock(&table_mutex);
 
 
 			} else if ((strcmp(tokens[0], "stats") == 0) || (strcmp(tokens[0], "st") == 0)) {
 
+				//pthread_mutex_lock(&stats_mutex);
+
 				// Verifica se a conexão com o servidor foi bem sucedida
 				if (rt->sockfd < 0) {
+					//pthread_mutex_unlock(&stats_mutex);
 					break;
 				}
 				
 				int stats_result = rtable_stats(rt);
+				//pthread_mutex_unlock(&stats_mutex);
 
 				// Verifica se a operação del foi bem sucedida
 				if (stats_result != 0) {
@@ -212,7 +246,10 @@ int main(int argc, char **argv) {
 
 		}
 	}
-	
+
+	//pthread_mutex_destroy(&table_mutex);
+	//pthread_mutex_destroy(&stats_mutex);
+
 	return 0;
 
 }
