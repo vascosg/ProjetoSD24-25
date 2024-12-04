@@ -60,6 +60,6 @@ void rtable_free_entries(struct entry_t **entries);
 
 /* Obtém as estatísticas do servidor.
 */
-int rtable_stats(struct rtable_t *rtable);
+struct statistics_t *rtable_stats(struct rtable_t *rtable);
 
 #endif

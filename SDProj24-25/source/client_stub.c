@@ -303,9 +303,9 @@ void rtable_free_entries(struct entry_t **entries) {
 /* Obtém as estatísticas do servidor.
  * Retorna 0 (OK) ou -1 em caso de erro.
  */
-int rtable_stats(struct rtable_t *rtable) {	// rever!!!!
+struct statistics_t *rtable_stats(struct rtable_t *rtable) {	// rever!!!!
 
-	if (!rtable) return -1;
+	if (!rtable) return NULL;
 
 	// Criar mensagem ainda nao serializada
 	MessageT msg = MESSAGE_T__INIT;
@@ -316,12 +316,24 @@ int rtable_stats(struct rtable_t *rtable) {	// rever!!!!
 	MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
-		return -1;
+		return NULL;
 	}
 
-    printf("Número de operações (n_ops): %d\n", response->ops);
-    printf("Tempo total gasto (time_spent): %.2f segundos\n", response->duration);
-    printf("Número de clientes conectados (n_clients): %d\n", response->clients);
+	struct statistics_t *statistic = statistics_create();
+	if (!statistic) { 
+		message_t__free_unpacked(response, NULL);
+		return NULL; 
+	}
 
-	return 0;
+	statistic->n_ops = response->ops;
+	statistic->time_spent = response->duration;
+	statistic->n_clients = response->clients;
+
+	
+
+    printf("Número de operações (n_ops): %d\n", statistic->n_ops);
+    printf("Tempo total gasto (time_spent): %.2f segundos\n", statistic->time_spent);
+    printf("Número de clientes conectados (n_clients): %d\n", statistic->n_clients);
+
+	return statistic;
 }

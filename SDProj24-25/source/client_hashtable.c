@@ -231,11 +231,11 @@ int main(int argc, char **argv) {
 					break;
 				}
 				
-				int stats_result = rtable_stats(rt);
+				struct statistics_t *stats_result = rtable_stats(rt);
 				//pthread_mutex_unlock(&stats_mutex);
 
 				// Verifica se a operação del foi bem sucedida
-				if (stats_result != 0) {
+				if (stats_result == NULL) {
 					printf("Error in rtable_stats! \n");
 					continue;
 				}

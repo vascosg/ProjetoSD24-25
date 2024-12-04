@@ -7,21 +7,20 @@ HASHTABLES = client_hashtable server_hashtable
 
 MODULES = block entry list serialization table table-private htmessages.pb-c client_network client_stub server_network server_skeleton message-private stats server_network-private
 
-TEST_EXECUTABLES = $(addprefix $(BIN_DIR)/, $(HASHTABLES))
+EXECUTABLES = $(addprefix $(BIN_DIR)/, $(HASHTABLES))
 
 OBJ_FILES = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(MODULES)))
-TEST_OBJ_FILES = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(HASHTABLES)))
+HASHTABLES_FILES = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(HASHTABLES)))
 
 CC = gcc
 CFLAGS = -Wall -g -I$(INC_DIR)
 
 PROTOC = protoc-c
 
-all: initialize_proto $(TEST_EXECUTABLES)
+all: initialize_proto $(EXECUTABLES)
 
 # Rule to generate .c and .h from .proto
 initialize_proto: $(INC_DIR)/htmessages.proto
-	@mkdir -p $(SRC_DIR) $(INC_DIR)
 	$(PROTOC) --proto_path=$(INC_DIR) --c_out=$(SRC_DIR) $<
 	mv $(SRC_DIR)/htmessages.pb-c.h $(INC_DIR)/htmessages.pb-c.h
 
@@ -45,6 +44,6 @@ $(BIN_DIR)/server_hashtable: $(OBJ_FILES) $(OBJ_DIR)/server_hashtable.o
 	$(CC) $(CFLAGS) $^ -o $@ -lprotobuf-c
 
 clean:
-	rm -rf $(OBJ_DIR)/*.o $(BIN_DIR)/* $(Lib) $(SRC_DIR)/*.pb-c.c $(INC_DIR)/*.pb-c.h
+	rm -rf $(OBJ_DIR)/*.o $(BIN_DIR)/*
 
 .PHONY: all clean
