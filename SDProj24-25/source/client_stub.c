@@ -85,7 +85,7 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 	}
 
 	// Criar mensagem ainda nao serializada
-	struct MessageT msg = MESSAGE_T__INIT;
+	MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_PUT;  // Codigos de commando
 	msg.c_type = MESSAGE_T__C_TYPE__CT_ENTRY; // Codigos de tipo de informacao
 
@@ -114,7 +114,7 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 	message_t__pack(&msg, packed_msg);
 
 	// Enviar e receber
-	struct MessageT *received_msg = network_send_receive(rtable, &msg);
+	MessageT *received_msg = network_send_receive(rtable, &msg);
 	if (!received_msg) {
 		//fprintf(stderr, "Erro no network_send_receive\n");
 		free(packed_msg);
@@ -141,12 +141,12 @@ struct block_t *rtable_get(struct rtable_t *rtable, char *key){
 	}
 
 	// Criar mensagem ainda nao serializada
-	struct MessageT msg = MESSAGE_T__INIT;
+	MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_GET;  // Codigos de comando
 	msg.c_type = MESSAGE_T__C_TYPE__CT_KEY;  // Codigos de tipo de informacao
 	msg.key = key;
 
-	struct MessageT *response = network_send_receive(rtable, &msg);
+	MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
 		//printf("Erro no network_send_receive\n");
@@ -178,12 +178,12 @@ int rtable_del(struct rtable_t *rtable, char *key){
 	}
 
 	// Criar mensagem ainda nao serializada
-	struct MessageT msg = MESSAGE_T__INIT;
+	MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_DEL;  // Codigos de commando
 	msg.c_type = MESSAGE_T__C_TYPE__CT_KEY;  // Codigos de tipo de informacao
 	msg.key = key;
 
-	struct MessageT *response = network_send_receive(rtable, &msg);
+	MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
 		return -1;
@@ -201,12 +201,12 @@ int rtable_size(struct rtable_t *rtable) {
 	if (!rtable) return -1;
 
 	// Criar mensagem ainda nao serializada
-	struct MessageT msg = MESSAGE_T__INIT;
+	MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_SIZE;
 	msg.c_type = MESSAGE_T__C_TYPE__CT_NONE;
 
 	// Recebe mensagem
-	struct MessageT *response = network_send_receive(rtable, &msg); // mensagem deserializada
+	MessageT *response = network_send_receive(rtable, &msg); // mensagem deserializada
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
 		return -1;
@@ -228,12 +228,12 @@ char **rtable_get_keys(struct rtable_t *rtable) {
 	if (!rtable) return NULL;
 
 	// Criar mensagem ainda nao serializada
-	struct MessageT msg = MESSAGE_T__INIT;
+	MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_GETKEYS;
 	msg.c_type = MESSAGE_T__C_TYPE__CT_NONE;
 
 	// Receber as keys
-	struct MessageT *response = network_send_receive(rtable, &msg);
+	MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
 		return NULL;
@@ -265,12 +265,12 @@ struct entry_t **rtable_get_table(struct rtable_t *rtable) {
 	if (!rtable ) return NULL;
 
 	// Cria nova mensagem
-	struct MessageT msg = MESSAGE_T__INIT;
+	MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_GETTABLE;
 	msg.c_type = MESSAGE_T__C_TYPE__CT_NONE;
 
 	// Recebe tabela
-	struct MessageT *response = network_send_receive(rtable, &msg);
+	MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		return NULL;
 	}
@@ -308,12 +308,12 @@ int rtable_stats(struct rtable_t *rtable) {	// rever!!!!
 	if (!rtable) return -1;
 
 	// Criar mensagem ainda nao serializada
-	struct MessageT msg = MESSAGE_T__INIT;
+	MessageT msg = MESSAGE_T__INIT;
 	msg.opcode = MESSAGE_T__OPCODE__OP_STATS;
 	msg.c_type = MESSAGE_T__C_TYPE__CT_STATS;
 
 	// Envia e verifica se recebe tudo bem
-	struct MessageT *response = network_send_receive(rtable, &msg);
+	MessageT *response = network_send_receive(rtable, &msg);
 	if (!response || response->opcode == MESSAGE_T__OPCODE__OP_ERROR) {
 		message_t__free_unpacked(response, NULL);
 		return -1;

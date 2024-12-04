@@ -68,7 +68,7 @@ int network_connect(struct rtable_t *rtable) {
  * - Tratar de forma apropriada erros de comunicação;
  * - Retornar a mensagem de-serializada ou NULL em caso de erro.
  */
-struct MessageT *network_send_receive(struct rtable_t *rtable, struct MessageT *msg) {
+MessageT *network_send_receive(struct rtable_t *rtable, MessageT *msg) {
 	if (!rtable || !msg) return NULL;
 
 	// 1. Serializar a mensagem
@@ -124,7 +124,7 @@ struct MessageT *network_send_receive(struct rtable_t *rtable, struct MessageT *
 	}
 
 	// 6. Deserializar a resposta
-	struct MessageT *response_msg = message_t__unpack(NULL, response_size, response_buffer);
+	MessageT *response_msg = message_t__unpack(NULL, response_size, response_buffer);
 	free(response_buffer); // Liberta o buffer após a deserialização
 
 	if (!response_msg) {

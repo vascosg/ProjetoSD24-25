@@ -50,7 +50,7 @@ int server_skeleton_destroy(struct table_t *table){
  * e utiliza a mesma estrutura MessageT para devolver o resultado.
  * Retorna 0 (OK) ou -1 em caso de erro.
  */
-int invoke(struct MessageT *msg, struct table_t *table){		// incluir trataemnto da OP_STATS
+int invoke(MessageT *msg, struct table_t *table){		// incluir trataemnto da OP_STATS
 
 	if (!msg  || !table) return -1;
 

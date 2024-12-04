@@ -42,7 +42,7 @@ void *client_handler(void *args){
 
 	while(1) {
 		// Recebe uma mensagem do cliente
-		struct MessageT *request = network_receive(client_socket);
+		MessageT *request = network_receive(client_socket);
 		if (!request) {
 
 			if (errno == 0) break;

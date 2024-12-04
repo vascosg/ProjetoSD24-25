@@ -116,7 +116,7 @@ int network_main_loop(int listening_socket, struct table_t *table){ // a listeni
  * reservando a memória necessária para a estrutura MessageT.
  * Retorna a mensagem com o pedido ou NULL em caso de erro.
  */
-struct MessageT *network_receive(int client_socket){
+MessageT *network_receive(int client_socket){
 
 	// 1. Receber o tamanho da resposta (2 bytes - short)
 	short net_response_size;
@@ -140,7 +140,7 @@ struct MessageT *network_receive(int client_socket){
 	}
 
 	// 3. Deserializar a resposta
-	struct MessageT *response_msg = message_t__unpack(NULL, response_size, response_buffer);
+	MessageT *response_msg = message_t__unpack(NULL, response_size, response_buffer);
 	free(response_buffer); // Liberta o buffer após a deserialização
 
 	if (!response_msg) {
@@ -157,7 +157,7 @@ struct MessageT *network_receive(int client_socket){
  * - Enviar a mensagem serializada, através do client_socket.
  * Retorna 0 (OK) ou -1 em caso de erro.
  */
-int network_send(int client_socket, struct MessageT *msg){
+int network_send(int client_socket, MessageT *msg){
 
 	if (client_socket < 0 || !msg) return -1;
 
