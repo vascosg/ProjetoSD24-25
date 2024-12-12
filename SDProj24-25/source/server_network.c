@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <time.h>
 #include <pthread.h>
+#include <zookeeper/zookeeper.h>
 #include "../include/server_skeleton.h"
 #include "../include/message-private.h"
 #include "../include/table.h"
@@ -25,11 +26,144 @@
 
 #define BUFFER_SIZE 1024
 
+// Variáveis globais do ZooKeeper
+static zhandle_t *zh;				// handler do ZooKeeper
+static char znode_path[1024];		// caminho do znode
+static char successor_path[256];	// caminho do sucessor
+static int is_tail = 0;				// flag para saber se é a cauda
+
+
+int compare_strings(const void *a, const void *b) {
+    const char *str_a = *(const char **)a;
+    const char *str_b = *(const char **)b;
+    return strcmp(str_a, str_b);
+}
+
+// Função para garantir que o nó /chain existe
+void ensure_chain_node_exists() {
+
+    int ret = zoo_exists(zh, "/chain", 0, NULL);
+
+    if (ret == ZNONODE) {
+        // Creates the /chain node if it does not exist
+        ret = zoo_create(zh, "/chain", NULL, -1, &ZOO_OPEN_ACL_UNSAFE, 0, NULL, 0);
+        if (ret != ZOK) {
+            fprintf(stderr, "Erro ao criar o nó /chain: %s\n", zerror(ret));
+            exit(EXIT_FAILURE);
+        }
+        printf("Nó /chain criado com sucesso\n");
+    } else if (ret != ZOK) {
+        fprintf(stderr, "Erro ao verificar a existência do nó /chain: %s\n", zerror(ret));
+        exit(EXIT_FAILURE);
+    }
+}
+
+// Função para conectar ao ZooKeeper
+void connect_to_zookeeper(char* zk_port, short port) {
+
+    zh = zookeeper_init(zk_port, NULL, 2000, 0, NULL, 0);
+    if (!zh) {
+        fprintf(stderr, "Erro ao conectar ao ZooKeeper\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Ensure the /chain node exists
+    ensure_chain_node_exists();
+
+    // Create the ZNode with the actual IP and port
+    char server_data[64];
+    snprintf(server_data, sizeof(server_data), "%s:%d", "127.0.0.1", port);
+
+    // Criar ZNode efémero sequencial
+    int ret = zoo_create(zh, "/chain/node", server_data, strlen(server_data), &ZOO_OPEN_ACL_UNSAFE,
+                         ZOO_EPHEMERAL | ZOO_SEQUENCE, znode_path, sizeof(znode_path));
+    if (ret != ZOK) {
+        fprintf(stderr, "Erro ao criar ZNode: %s\n", zerror(ret));
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Servidor registado no ZooKeeper com ZNode: %s\n", znode_path);
+}
+
+// Atualiza o sucessor com base nos filhos de /chain
+void update_successor() {
+    struct String_vector children;
+    int ret = zoo_get_children(zh, "/chain", 1, &children);
+    if (ret != ZOK) {
+        fprintf(stderr, "Erro ao obter filhos de /chain: %s\n", zerror(ret));
+        return;
+    }
+
+    // Ordenar os filhos e identificar o sucessor
+    qsort(children.data, children.count, sizeof(char *), compare_strings);
+    successor_path[0] = '\0';
+    for (int i = 0; i < children.count; i++) {
+        if (strcmp(znode_path, children.data[i]) < 0) {
+            snprintf(successor_path, sizeof(successor_path), "/chain/%s", children.data[i]);
+            break;
+        }
+    }
+    is_tail = (successor_path[0] == '\0');
+
+    // Se houver sucessor, conectar-se a ele
+    if (!is_tail) {
+        char successor_data[64];
+        int len = sizeof(successor_data);
+        ret = zoo_get(zh, successor_path, 0, successor_data, &len, NULL);
+        if (ret != ZOK) {
+            fprintf(stderr, "Erro ao obter dados do sucessor: %s\n", zerror(ret));
+            fprintf(stderr, "Successor path: %s\n", successor_path);
+        } else {
+            printf("Conectado ao sucessor: %s\n", successor_data);
+            connect_to_next_server(successor_data); // Função implementada em outro local
+        }
+    } else {
+        printf("Este servidor é a cauda da cadeia.\n");
+    }
+
+    deallocate_String_vector(&children);
+}
+
+// Callback do watcher
+void my_watcher_fn(zhandle_t *zzh, int type, int state, const char *path, void *watcherCtx) {
+    if (type == ZOO_CHILD_EVENT) {
+        printf("Alteração detectada nos filhos de /chain\n");
+        update_successor();
+    }
+}
+
+/* Inicia o skeleton da tabela. 
+ * O main() do servidor deve chamar esta função antes de poder usar a 
+ * função invoke(). O parâmetro n_lists define o número de listas a
+ * serem usadas pela tabela mantida no servidor.
+ * Retorna a tabela criada ou NULL em caso de erro. 
+ */
+struct table_t *server_skeleton_init(int n_lists){
+
+	struct table_t *table = table_create(n_lists);
+	if (!table) {
+		//fprintf(stderr, "Erro ao criar a tabela.\n");
+		return NULL;
+	}
+	return table;
+}
+
+/* Liberta toda a memória ocupada pela tabela e todos os recursos
+ * e outros recursos usados pelo skeleton.
+ * Retorna 0 (OK) ou -1 em caso de erro.
+ */
+int server_skeleton_destroy(struct table_t *table){
+
+	if (!table) return -1;
+	table_destroy(table);
+	return 0;
+}
+
 /* Função para preparar um socket de receção de pedidos de ligação
  * num determinado porto.
  * Retorna o descritor do socket ou -1 em caso de erro.
  */
-int server_network_init(short port){
+int server_network_init(char* zk_port, short port){
 
 	int server_socket;
 	struct sockaddr_in server_addr;

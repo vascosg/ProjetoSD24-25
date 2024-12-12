@@ -9,16 +9,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <errno.h>
+#include <pthread.h>
 #include <zookeeper/zookeeper.h>
+
 #include "../include/client_network.h"
 #include "../include/entry.h"
 #include "../include/block.h"
 #include "../include/client_stub-private.h"
 #include "../include/stats.h"
-#include <sys/socket.h>
-#include <unistd.h>
-#include <errno.h>
-#include <pthread.h>
 
 #define MAX_COMMAND_LEN 1024
 #define MAX_TOKENS 3
