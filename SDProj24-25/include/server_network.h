@@ -43,4 +43,6 @@ int network_send(int client_socket, MessageT *msg);
 */
 int server_network_close(int socket);
 
+void connect_to_next_server(const char *server_data);
+
 #endif

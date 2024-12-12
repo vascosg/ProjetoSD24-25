@@ -13,7 +13,8 @@ OBJ_FILES = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(MODULES)))
 HASHTABLES_FILES = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(HASHTABLES)))
 
 CC = gcc
-CFLAGS = -Wall -g -I$(INC_DIR)
+CFLAGS = -Wall -g -I$(INC_DIR) -I/usr/include/protobuf-c -I/usr/include/zookeeper
+LDFLAGS = -lprotobuf-c -lzookeeper_mt
 
 PROTOC = protoc-c
 
@@ -27,7 +28,7 @@ initialize_proto: $(INC_DIR)/htmessages.proto
 # Rule to build the test executables
 $(BIN_DIR)/%: $(OBJ_FILES) $(OBJ_DIR)/%.o
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) $^ -o $@ -lprotobuf-c
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 # Rule to compile .c files into .o files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
@@ -37,11 +38,11 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 # Rules to build the test executables
 $(BIN_DIR)/client_hashtable: $(OBJ_FILES) $(OBJ_DIR)/client_hashtable.o
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) $^ -o $@ -lprotobuf-c
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BIN_DIR)/server_hashtable: $(OBJ_FILES) $(OBJ_DIR)/server_hashtable.o
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) $^ -o $@ -lprotobuf-c
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 clean:
 	rm -rf $(OBJ_DIR)/*.o $(BIN_DIR)/*

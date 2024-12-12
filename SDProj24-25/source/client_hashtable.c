@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <zookeeper/zookeeper.h>
 #include "../include/client_network.h"
 #include "../include/entry.h"
 #include "../include/block.h"
@@ -23,9 +24,66 @@
 #define MAX_TOKENS 3
 #define USAGE_MESSAGE "Usage: p[ut] <key> <value> | g[et] <key> | d[el] <key> | s[ize] | [get]k[eys] | [get]t[able] | st[ats] | q[uit]\n"
 
-// inicializa mutexes
-//pthread_mutex_t table_mutex = PTHREAD_MUTEX_INITIALIZER;	// mutex para a tabela
-//pthread_mutex_t stats_mutex = PTHREAD_MUTEX_INITIALIZER;	// mutex para as estatisticas
+// Variáveis globais do ZooKeeper
+static zhandle_t *zh;
+static char head_path[256];
+static char tail_path[256];
+
+int compare_strings(const void *a, const void *b) {
+    const char *str_a = *(const char **)a;
+    const char *str_b = *(const char **)b;
+    return strcmp(str_a, str_b);
+}
+
+// Função para conectar ao ZooKeeper
+void connect_to_zookeeper() {
+    zh = zookeeper_init("127.0.0.1:2181", NULL, 2000, 0, NULL, 0);
+    if (!zh) {
+        fprintf(stderr, "Erro ao conectar ao ZooKeeper\n");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Cliente conectado ao ZooKeeper\n");
+}
+
+// Atualiza o head e o tail com base nos filhos de /chain
+void update_head_and_tail() {
+    struct String_vector children;
+    if (zoo_get_children(zh, "/chain", 1, &children) != ZOK) {
+        fprintf(stderr, "Erro ao obter filhos de /chain\n");
+        return;
+    }
+
+    // Ordenar os filhos e identificar head e tail
+    qsort(children.data, children.count, sizeof(char *), compare_strings);
+    if (children.count > 0) {
+        strcpy(head_path, children.data[0]);
+        strcpy(tail_path, children.data[children.count - 1]);
+
+        // Obter dados do head e tail
+        char head_data[64], tail_data[64];
+        int len = sizeof(head_data);
+        if (zoo_get(zh, head_path, 0, head_data, &len, NULL) == ZOK) {
+            printf("Head conectado: %s\n", head_data);
+            connect_to_zookeeper(head_data); // Implementa para o head
+        }
+        len = sizeof(tail_data);
+        if (zoo_get(zh, tail_path, 0, tail_data, &len, NULL) == ZOK) {
+            printf("Tail conectado: %s\n", tail_data);
+            connect_to_zookeeper(tail_data); // Implementa para o tail
+        }
+    }
+
+    deallocate_String_vector(&children);
+}
+
+// Callback do watcher
+void my_watcher_fn(zhandle_t *zzh, int type, int state, const char *path, void *watcherCtx) {
+    if (type == ZOO_CHILD_EVENT) {
+        printf("Alteração detectada nos filhos de /chain\n");
+        update_head_and_tail();
+    }
+}
 
 int main(int argc, char **argv) {
 
@@ -35,6 +93,12 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "Usage: %s <server>:<port>\n", argv[0]);
 		return -1;
 	}
+
+    // Conectar ao ZooKeeper
+    connect_to_zookeeper();
+
+    // Obter e fazer watch aos filhos de /chain
+    update_head_and_tail();
 
 	char command[MAX_COMMAND_LEN];
 	char *tokens[MAX_TOKENS]; // Array para guardar os pointers
@@ -247,8 +311,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	//pthread_mutex_destroy(&table_mutex);
-	//pthread_mutex_destroy(&stats_mutex);
+	zookeeper_close(zh);
 
 	return 0;
 

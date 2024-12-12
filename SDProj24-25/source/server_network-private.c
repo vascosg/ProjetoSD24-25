@@ -34,7 +34,7 @@ void *client_handler(void *args){
 	clock_t inicio_tempo, fim_tempo;
 	double duracao;
 
-	printf("Client connection established\n");
+	printf("Client connection established X\n");
 
 	pthread_mutex_lock(&stats_mutex);
 	stats->n_clients++;
@@ -96,7 +96,7 @@ void *client_handler(void *args){
 	stats->n_clients--;
 	pthread_mutex_unlock(&stats_mutex);
 
-	printf("Client connection closed\n");
+	printf("Client connection closed X\n");
 
 	return NULL;
 }
