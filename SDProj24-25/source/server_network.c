@@ -98,7 +98,7 @@ void update_successor() {
     qsort(children.data, children.count, sizeof(char *), compare_strings);
     successor_path[0] = '\0';
     for (int i = 0; i < children.count; i++) {
-        if (strcmp(znode_path, children.data[i]) < 0) {
+        if (strcmp(znode_path, children.data[i]) < 0) {	//TODO reverrrr
             snprintf(successor_path, sizeof(successor_path), "/chain/%s", children.data[i]);
             break;
         }
@@ -179,6 +179,13 @@ int server_network_init(char* zk_port, short port){
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = INADDR_ANY;
 	server_addr.sin_port = htons(port);
+
+	// Convert IPv4 and IPv6 addresses from text to binary form
+	if (inet_pton(AF_INET, ip, &server_addr.sin_addr) <= 0) {
+		perror("Invalid address/ Address not supported");
+		close(sockfd);
+		return;
+	}
 
 	// Vincula o socket ao endereço e porta especificados
 	if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
@@ -348,41 +355,44 @@ int server_network_close(int socket){
 void connect_to_next_server(const char *server_data) {
     char ip[INET_ADDRSTRLEN];
     int port;
-    sscanf(server_data, "%[^:]:%d", ip, &port);
+	// Create socket
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("Socket creation failed");
+		return;
+	}
 
-    int sockfd;
-    struct sockaddr_in server_addr;
+	struct sockaddr_in server_addr;
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(port);
 
-    // Create socket
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("Socket creation failed");
-        return;
-    }
+	// Convert IPv4 and IPv6 addresses from text to binary form
+	if (inet_pton(AF_INET, ip, &server_addr.sin_addr) <= 0) {
+		perror("Invalid address/ Address not supported");
+		close(sockfd);
+		return;
+	}
 
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(port);
+	// Connect to the server
+	if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+		perror("Connection failed");
+		close(sockfd);
+		return;
+	}
 
-    // Convert IPv4 and IPv6 addresses from text to binary form
-    if (inet_pton(AF_INET, ip, &server_addr.sin_addr) <= 0) {
-        perror("Invalid address/ Address not supported");
-        close(sockfd);
-        return;
-    }
+	printf("Connected to the next server at %s:%d\n", ip, port);
 
-    // Connect to the server
-    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        perror("Connection failed");
-        close(sockfd);
-        return;
-    }
+	// You can now use sockfd to communicate with the next server
+	// For example, send a message to the server
+	// char *message = "Hello, next server!";
+	// send(sockfd, message, strlen(message), 0);
 
-    printf("Connected to the next server at %s:%d\n", ip, port);
+	// Close the socket when done
+	close(sockfd);
+}
+	printf("Connected to the next server at %s:%d\n", ip, port);
 
-    // You can now use sockfd to communicate with the next server
-    // For example, send a message to the server
-    // char *message = "Hello, next server!";
-    // send(sockfd, message, strlen(message), 0);
+	// You can now use sockfd to communicate with the next server
 
-    // Close the socket when done
-    close(sockfd);
+	// Close the socket when done
+	close(sockfd);
 }
