@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
 
     // Validação dos parâmetros
     if (port <= 0 || n_lists <= 0) {
-        fprintf(stderr, "Erro: porta e número de listas devem ser maiores que zero.\n");
+        fprintf(stderr, "Erro: parâmetros inválidos.\n");
         return -1;
     }
 
@@ -43,15 +43,17 @@ int main(int argc, char **argv) {
 
     // 2. Inicializar a tabela
     struct table_t *table = server_skeleton_init(n_lists);
-    if (!table ) {
+    if (!table) {
         fprintf(stderr, "Erro ao inicializar a tabela.\n");
         server_network_close(server_socket);
         return -1;
     }
 
-    connect_to_zookeeper(port);
-
-    update_successor();
+    if(set_table(table) < 0){
+        fprintf(stderr, "Erro a preencher a tabela.\n");
+        server_network_close(server_socket);
+        return -1;
+    }
 
     // 3. Loop principal para aceitar conexões de clientes e processar operações
     while (1) {
@@ -65,7 +67,6 @@ int main(int argc, char **argv) {
     }
 
     // Limpeza dos recursos
-    zookeeper_close(zh);
     server_skeleton_destroy(table);
     server_network_close(server_socket);
     printf("Servidor finalizado.\n");

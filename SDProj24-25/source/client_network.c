@@ -11,11 +11,14 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <zookeeper/zookeeper.h>
+
 #include "../include/message-private.h"
 #include "../include/htmessages.pb-c.h"
 #include "../include/client_network.h"
 #include "../include/server_network.h"
 #include "../include/client_stub-private.h"
+
 
 /* Esta função deve:
  * - Obter o endereço do servidor (struct sockaddr_in) com base na
@@ -27,8 +30,9 @@
  */
 int network_connect(struct rtable_t *rtable) {
 
+	// Verifica se os parâmetros são válidos
 	if (!rtable || !rtable->server_address || rtable->server_port <= 0) {
-		return -1; // Verifica se os parâmetros são válidos
+		return -1;
 	}
 
 	// Configura o endereço do servidor

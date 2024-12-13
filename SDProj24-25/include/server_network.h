@@ -8,7 +8,7 @@
 * num determinado porto.
 * Retorna o descritor do socket ou -1 em caso de erro.
 */
-int server_network_init(short port);
+int server_network_init(char* zk_port, short port);
 
 /* A função network_main_loop() deve:
 * - Aceitar uma conexão de um cliente;
@@ -44,5 +44,7 @@ int network_send(int client_socket, MessageT *msg);
 int server_network_close(int socket);
 
 void connect_to_next_server(const char *server_data);
+
+int get_previous_server(stuct table_t* table);
 
 #endif

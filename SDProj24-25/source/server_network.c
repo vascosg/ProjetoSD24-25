@@ -16,6 +16,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <zookeeper/zookeeper.h>
+#include "../include/client_stub.h"
 #include "../include/server_skeleton.h"
 #include "../include/message-private.h"
 #include "../include/table.h"
@@ -30,6 +31,7 @@
 static zhandle_t *zh;				// handler do ZooKeeper
 static char znode_path[1024];		// caminho do znode
 static char successor_path[256];	// caminho do sucessor
+struct rtable_t* sucessor_server;	// tabela de roteamento
 static int is_tail = 0;				// flag para saber se é a cauda
 
 
@@ -67,10 +69,10 @@ void connect_to_zookeeper(char* zk_port, short port) {
         exit(EXIT_FAILURE);
     }
 
-    // Ensure the /chain node exists
+    // Garante que o nó /chain existe
     ensure_chain_node_exists();
 
-    // Create the ZNode with the actual IP and port
+    // Cria o ZNode com o IP e porta atuais
     char server_data[64];
     snprintf(server_data, sizeof(server_data), "%s:%d", "127.0.0.1", port);
 
@@ -88,7 +90,7 @@ void connect_to_zookeeper(char* zk_port, short port) {
 // Atualiza o sucessor com base nos filhos de /chain
 void update_successor() {
     struct String_vector children;
-    int ret = zoo_get_children(zh, "/chain", 1, &children);
+    int ret = zoo_wget_children(zh, "/chain", &my_watcher_fn, "Zookeeper Data Watcher", &children);
     if (ret != ZOK) {
         fprintf(stderr, "Erro ao obter filhos de /chain: %s\n", zerror(ret));
         return;
@@ -96,9 +98,9 @@ void update_successor() {
 
     // Ordenar os filhos e identificar o sucessor
     qsort(children.data, children.count, sizeof(char *), compare_strings);
-    successor_path[0] = '\0';
+    successor_path[0] = '\0';	// caminho do servidor seguinte
     for (int i = 0; i < children.count; i++) {
-        if (strcmp(znode_path, children.data[i]) < 0) {	//TODO reverrrr
+        if (strcmp(znode_path, children.data[i]) < 0) {
             snprintf(successor_path, sizeof(successor_path), "/chain/%s", children.data[i]);
             break;
         }
@@ -115,7 +117,7 @@ void update_successor() {
             fprintf(stderr, "Successor path: %s\n", successor_path);
         } else {
             printf("Conectado ao sucessor: %s\n", successor_data);
-            connect_to_next_server(successor_data); // Função implementada em outro local
+            connect_to_next_server(successor_data);
         }
     } else {
         printf("Este servidor é a cauda da cadeia.\n");
@@ -126,10 +128,12 @@ void update_successor() {
 
 // Callback do watcher
 void my_watcher_fn(zhandle_t *zzh, int type, int state, const char *path, void *watcherCtx) {
-    if (type == ZOO_CHILD_EVENT) {
-        printf("Alteração detectada nos filhos de /chain\n");
-        update_successor();
-    }
+    if (state == ZOO_CONNECTED_STATE){
+		if (type == ZOO_CHILD_EVENT) {
+			printf("Alteração detectada nos filhos de /chain\n");
+			update_successor();
+		}
+	}
 }
 
 /* Inicia o skeleton da tabela. 
@@ -201,6 +205,12 @@ int server_network_init(char* zk_port, short port){
 		return -1;
 	}
 
+	printf("Running server in port: %d.\n", port);
+
+	connect_to_zookeeper(zk_port,port);
+
+	update_successor();
+
 	return server_socket;
 }
 
@@ -213,7 +223,8 @@ int server_network_init(char* zk_port, short port){
  * A função não deve retornar, a menos que ocorra algum erro. Nesse
  * caso retorna -1.
  */
-int network_main_loop(int listening_socket, struct table_t *table){ // a listening_socket tem de ser preparada para a receção de pedidos de múltiplas ligações num determinado porto (determinado pelo método listen)
+int network_main_loop(int listening_socket, struct table_t *table){
+
 	struct sockaddr_in client_addr;
 	socklen_t client_len= sizeof(client_addr);
 
@@ -352,47 +363,54 @@ int server_network_close(int socket){
 	return 0;
 }
 
+// conecta ao servidor seguinte
 void connect_to_next_server(const char *server_data) {
-    char ip[INET_ADDRSTRLEN];
-    int port;
-	// Create socket
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("Socket creation failed");
+    
+	int sucessor_server = rtable_connect(server_data);
+
+	if (sucessor_server == NULL) {
+		fprintf(stderr, "Erro ao conectar ao servidor seguinte\n");
 		return;
 	}
+	printf("Connected to the next server at %s\n", server_data);
 
-	struct sockaddr_in server_addr;
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(port);
+	return;
 
-	// Convert IPv4 and IPv6 addresses from text to binary form
-	if (inet_pton(AF_INET, ip, &server_addr.sin_addr) <= 0) {
-		perror("Invalid address/ Address not supported");
-		close(sockfd);
-		return;
-	}
-
-	// Connect to the server
-	if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-		perror("Connection failed");
-		close(sockfd);
-		return;
-	}
-
-	printf("Connected to the next server at %s:%d\n", ip, port);
-
-	// You can now use sockfd to communicate with the next server
-	// For example, send a message to the server
-	// char *message = "Hello, next server!";
-	// send(sockfd, message, strlen(message), 0);
-
-	// Close the socket when done
-	close(sockfd);
 }
-	printf("Connected to the next server at %s:%d\n", ip, port);
 
-	// You can now use sockfd to communicate with the next server
+int set_table(stuct table_t* table){
+	
+	if(znode_path != NULL){
+		char prev_server_ip[1024];
+		int len = sizeof(prev_server);
+		int ret = zoo_get(zh, znode_path, 0, prev_server_ip, &len, NULL);
+		if (ret != ZOK) {
+			fprintf(stderr, "Erro ao obter dados do servidor anterior: %s\n", zerror(ret));
+			fprintf(stderr, "Previous path: %s\n", znode_path);
+			return -1;
+		}
 
-	// Close the socket when done
-	close(sockfd);
+		struct rtable_t* prev_server = rtable_connect(prev_server_ip);
+
+		if(prev_server == NULL){
+			fprintf(stderr, "Erro ao conectar ao servidor anterior\n");
+			return -1;
+		}
+
+		struct entry_t** entries = rtable_get_table(prev_server);
+		int n_entries = rtable_size(prev_server);
+		for (size_t i = 0; i < n_entries; i++) {
+			if (entries[i] != NULL) {
+				int ret = table_put(table, entries[i]->key, entries[i]->value);
+				if (ret != 0) {
+					fprintf(stderr, "Erro ao inserir entrada na tabela\n");
+					return -1;
+				}
+			}
+		}
+		rtable_free_entries(entries);
+		rtable_disconnect(prev_server);
+
+	}
+
 }
