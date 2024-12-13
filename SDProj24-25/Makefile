@@ -5,7 +5,7 @@ INC_DIR = include
 
 HASHTABLES = client_hashtable server_hashtable
 
-MODULES = block entry list serialization table table-private htmessages.pb-c client_network client_stub server_network server_skeleton message-private stats server_network-private
+MODULES = block entry list serialization table table-private htmessages.pb-c client_network client_stub server_network server_skeleton message-private stats
 
 EXECUTABLES = $(addprefix $(BIN_DIR)/, $(HASHTABLES))
 

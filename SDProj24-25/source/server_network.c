@@ -23,22 +23,33 @@
 #include "../include/htmessages.pb-c.h"
 #include "../include/server_network.h"
 #include "../include/stats.h"
-#include "../include/server_network-private.h"
 
 #define BUFFER_SIZE 1024
+
+pthread_mutex_t stats_mutex = PTHREAD_MUTEX_INITIALIZER;	// mutex para as estatisticas
 
 // Variáveis globais do ZooKeeper
 static zhandle_t *zh;				// handler do ZooKeeper
 static char znode_path[1024];		// caminho do znode
 static char successor_path[256];	// caminho do sucessor
 struct rtable_t* sucessor_server;	// tabela de roteamento
+static int server_pos = -1; 		// id do servidor
 static int is_tail = 0;				// flag para saber se é a cauda
 
 
-int compare_strings(const void *a, const void *b) {
+static int compare_strings(const void *a, const void *b) {
     const char *str_a = *(const char **)a;
     const char *str_b = *(const char **)b;
     return strcmp(str_a, str_b);
+}
+
+// Callback do watcher
+static void my_watcher_fn(zhandle_t *zzh, int type, int state, const char *path, void *watcherCtx) {
+    if (state == ZOO_CONNECTED_STATE){
+		if (type == ZOO_CHILD_EVENT) {
+			printf("Alteração detectada nos filhos de /chain\n");
+		}
+	}
 }
 
 // Função para garantir que o nó /chain existe
@@ -61,7 +72,7 @@ void ensure_chain_node_exists() {
 }
 
 // Função para conectar ao ZooKeeper
-void connect_to_zookeeper(char* zk_port, short port) {
+static void connect_to_zookeeper(char* zk_port, short port) {
 
     zh = zookeeper_init(zk_port, NULL, 2000, 0, NULL, 0);
     if (!zh) {
@@ -90,7 +101,7 @@ void connect_to_zookeeper(char* zk_port, short port) {
 // Atualiza o sucessor com base nos filhos de /chain
 void update_successor() {
     struct String_vector children;
-    int ret = zoo_wget_children(zh, "/chain", &my_watcher_fn, "Zookeeper Data Watcher", &children);
+    int ret = zoo_wget_children(zh, "/chain", my_watcher_fn, "Zookeeper Data Watcher", &children);
     if (ret != ZOK) {
         fprintf(stderr, "Erro ao obter filhos de /chain: %s\n", zerror(ret));
         return;
@@ -102,7 +113,8 @@ void update_successor() {
     for (int i = 0; i < children.count; i++) {
         if (strcmp(znode_path, children.data[i]) < 0) {
             snprintf(successor_path, sizeof(successor_path), "/chain/%s", children.data[i]);
-            break;
+            server_pos = i;
+			break;
         }
     }
     is_tail = (successor_path[0] == '\0');
@@ -126,14 +138,147 @@ void update_successor() {
     deallocate_String_vector(&children);
 }
 
-// Callback do watcher
-void my_watcher_fn(zhandle_t *zzh, int type, int state, const char *path, void *watcherCtx) {
-    if (state == ZOO_CONNECTED_STATE){
-		if (type == ZOO_CHILD_EVENT) {
-			printf("Alteração detectada nos filhos de /chain\n");
-			update_successor();
+// conecta ao servidor seguinte
+void connect_to_next_server(char *server_data) {
+    
+	sucessor_server = rtable_connect(server_data);
+
+	if (sucessor_server) {
+		fprintf(stderr, "Erro ao conectar ao servidor seguinte\n");
+		return;
+	}
+	printf("Connected to the next server at %s\n", server_data);
+
+	return;
+
+}
+
+int set_table(struct table_t* table){
+	
+	if(server_pos > 0){
+		if(znode_path != NULL){
+			char prev_server_ip[1024];
+			int len = sizeof(prev_server_ip);
+			int ret = zoo_get(zh, znode_path, 0, prev_server_ip, &len, NULL);
+			if (ret != ZOK) {
+				fprintf(stderr, "Erro ao obter dados do servidor anterior: %s\n", zerror(ret));
+				fprintf(stderr, "Previous path: %s\n", znode_path);
+				return -1;
+			}
+
+			struct rtable_t* prev_server = rtable_connect(prev_server_ip);
+
+			if(prev_server == NULL){
+				fprintf(stderr, "Erro ao conectar ao servidor anterior\n");
+				return -1;
+			}
+
+			struct entry_t** entries = rtable_get_table(prev_server);
+			int n_entries = rtable_size(prev_server);
+			for (size_t i = 0; i < n_entries; i++) {
+				if (entries[i] != NULL) {
+					int ret = table_put(table, entries[i]->key, entries[i]->value);
+					if (ret != 0) {
+						fprintf(stderr, "Erro ao inserir entrada na tabela\n");
+						return -1;
+					}
+				}
+			}
+			rtable_free_entries(entries);
+			rtable_disconnect(prev_server);
+
 		}
 	}
+	return 0;
+}
+
+void *client_handler(void *args){
+
+	struct client_thread_args *thread_args = (struct client_thread_args *)args;
+	int client_socket = thread_args->client_socket;
+	struct table_t *table = thread_args->table;
+	struct statistics_t *stats = thread_args->stats;
+
+	clock_t inicio_tempo, fim_tempo;
+	double duracao;
+
+	pthread_mutex_lock(&stats_mutex);
+	stats->n_clients++;
+	pthread_mutex_unlock(&stats_mutex);
+
+	while(1) {
+		// Recebe uma mensagem do cliente
+		MessageT *request = network_receive(client_socket);
+		if (!request) {
+
+			if (errno == 0) break;
+			//perror("Erro ao receber mensagem\n");
+			message_t__free_unpacked(request, NULL);
+			//close(client_socket);
+			//return -1;
+		}
+
+		//Tratar o statsaqui para todas as threads poderem ter acesso aos valores de stats
+		if(request->opcode == MESSAGE_T__OPCODE__OP_STATS) {
+
+			if (!stats) { // Se houver problema no stat do server
+				request->opcode = MESSAGE_T__OPCODE__OP_ERROR;
+				request->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+
+			} else { // Formatar a menssagem para enviar com a resposa a stats
+				request->opcode = MESSAGE_T__OPCODE__OP_STATS + 1;
+				request->c_type = MESSAGE_T__C_TYPE__CT_STATS;
+				pthread_mutex_lock(&stats_mutex);
+				request->ops = stats->n_ops;
+				request->duration = stats->time_spent;
+				request->clients = stats->n_clients;
+				pthread_mutex_unlock(&stats_mutex);
+			}
+		} else {
+
+			inicio_tempo = clock(); // mudar para gettimeofday
+
+			
+			if(invoke(request, table)){
+				printf("Erro ao executar a operação\n");
+			}
+			// Verifica se ocorreu um erro
+			if (sucessor_server != NULL) {
+				
+				if(request->opcode == MESSAGE_T__OPCODE__OP_PUT+1){
+
+					struct block_t *bloco = block_create(request->entry->value.len, request->entry->value.data);
+					char *key_copy = strdup(request->entry->key);
+					struct entry_t *entry = entry_create(key_copy, bloco);
+					
+					rtable_put(sucessor_server, entry);
+				}
+				else if(request-> opcode == MESSAGE_T__OPCODE__OP_DEL+1){
+					rtable_del(sucessor_server, request->key);
+				}
+				
+			}
+			fim_tempo = clock();
+
+			duracao = (double) fim_tempo - inicio_tempo;
+			pthread_mutex_lock(&stats_mutex);
+			stats->time_spent += duracao;
+			stats->n_ops++;
+			pthread_mutex_unlock(&stats_mutex);
+		}
+
+		// Envia a resposta ao cliente
+		network_send(client_socket, request);
+		message_t__free_unpacked(request, NULL);
+	}
+
+	close(client_socket);
+
+	pthread_mutex_lock(&stats_mutex);
+	stats->n_clients--;
+	pthread_mutex_unlock(&stats_mutex);
+
+	return NULL;
 }
 
 /* Inicia o skeleton da tabela. 
@@ -183,13 +328,6 @@ int server_network_init(char* zk_port, short port){
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = INADDR_ANY;
 	server_addr.sin_port = htons(port);
-
-	// Convert IPv4 and IPv6 addresses from text to binary form
-	if (inet_pton(AF_INET, ip, &server_addr.sin_addr) <= 0) {
-		perror("Invalid address/ Address not supported");
-		close(sockfd);
-		return;
-	}
 
 	// Vincula o socket ao endereço e porta especificados
 	if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
@@ -251,12 +389,13 @@ int network_main_loop(int listening_socket, struct table_t *table){
 
 			// Cria a thread
 			pthread_t client_thread;
-			if (pthread_create(&client_thread, NULL, client_handler, (void *)args) != 0) {
+			if (pthread_create(&client_thread, NULL, &client_handler, (void *)args) != 0) {
 				perror("Erro ao criar thread");
 				close(client_socket);
 				free(args);
 				continue;
 			}
+			pthread_detach(client_thread);
 		}
 
 		return 0;
@@ -361,56 +500,4 @@ int server_network_close(int socket){
 		return -1;
 	}
 	return 0;
-}
-
-// conecta ao servidor seguinte
-void connect_to_next_server(const char *server_data) {
-    
-	int sucessor_server = rtable_connect(server_data);
-
-	if (sucessor_server == NULL) {
-		fprintf(stderr, "Erro ao conectar ao servidor seguinte\n");
-		return;
-	}
-	printf("Connected to the next server at %s\n", server_data);
-
-	return;
-
-}
-
-int set_table(stuct table_t* table){
-	
-	if(znode_path != NULL){
-		char prev_server_ip[1024];
-		int len = sizeof(prev_server);
-		int ret = zoo_get(zh, znode_path, 0, prev_server_ip, &len, NULL);
-		if (ret != ZOK) {
-			fprintf(stderr, "Erro ao obter dados do servidor anterior: %s\n", zerror(ret));
-			fprintf(stderr, "Previous path: %s\n", znode_path);
-			return -1;
-		}
-
-		struct rtable_t* prev_server = rtable_connect(prev_server_ip);
-
-		if(prev_server == NULL){
-			fprintf(stderr, "Erro ao conectar ao servidor anterior\n");
-			return -1;
-		}
-
-		struct entry_t** entries = rtable_get_table(prev_server);
-		int n_entries = rtable_size(prev_server);
-		for (size_t i = 0; i < n_entries; i++) {
-			if (entries[i] != NULL) {
-				int ret = table_put(table, entries[i]->key, entries[i]->value);
-				if (ret != 0) {
-					fprintf(stderr, "Erro ao inserir entrada na tabela\n");
-					return -1;
-				}
-			}
-		}
-		rtable_free_entries(entries);
-		rtable_disconnect(prev_server);
-
-	}
-
 }

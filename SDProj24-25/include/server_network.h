@@ -1,8 +1,16 @@
 #ifndef _SERVER_NETWORK_H
 #define _SERVER_NETWORK_H
 
+
+struct client_thread_args {
+    int client_socket;
+    struct table_t *table;
+    struct statistics_t *stats;
+};
+
 #include "table.h"
 #include "htmessages.pb-c.h"
+#include "zookeeper/zookeeper.h"
 
 /* Função para preparar um socket de receção de pedidos de ligação
 * num determinado porto.
@@ -43,8 +51,8 @@ int network_send(int client_socket, MessageT *msg);
 */
 int server_network_close(int socket);
 
-void connect_to_next_server(const char *server_data);
+void connect_to_next_server(char *server_data);
 
-int get_previous_server(stuct table_t* table);
+int set_table(struct table_t* table);
 
 #endif
