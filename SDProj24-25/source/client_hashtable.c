@@ -6,7 +6,7 @@
 ---------------------------------------
 ------------------------------------ */
 
-/*#include <stdio.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -14,7 +14,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <zookeeper/zookeeper.h>
-
+#include <signal.h>
 #include "../include/client_network.h"
 #include "../include/entry.h"
 #include "../include/block.h"
@@ -40,10 +40,69 @@ static int compare_strings(const void *a, const void *b) {
 
 // Callback do watcher
 static void my_watcher_fn(zhandle_t *zzh, int type, int state, const char *path, void *watcherCtx) {
-    if (type == ZOO_CHILD_EVENT) {
-        printf("Alteração detectada nos filhos de /chain\n");
+    if(state == ZOO_CONNECTED_STATE) {
+		if (type == ZOO_CHILD_EVENT) {
+			
+			struct String_vector children;
 
-    }
+			if (zoo_wget_children(zh, "/chain", my_watcher_fn, "Zookeeper Data Watcher", &children) != ZOK) {
+				fprintf(stderr, "Erro ao obter filhos de /chain\n");
+				return;
+			}
+
+			if(children.count > 0){
+				// Ordenar os filhos e identificar head e tail
+				qsort(children.data, children.count, sizeof(char *), compare_strings);
+
+				char aux_path[256];
+				snprintf(aux_path, sizeof(aux_path), "/chain/%s", children.data[0]);
+
+				if (strcmp(head_path, aux_path) != 0) {
+					snprintf(head_path, sizeof(head_path), "/chain/%s", children.data[0]);
+					
+					if(head)rtable_disconnect(head);
+					// Obter dados do head
+					char head_data[64];
+					int len = sizeof(head_data);
+					if (zoo_get(zh, head_path, 0, head_data, &len, NULL) != ZOK) {
+						printf("Erro ao obter dados do head\n");
+						deallocate_String_vector(&children);
+						return;
+					}
+					head = rtable_connect(head_data);
+
+					if (head == NULL) {
+						printf("Erro ao conectar ao head\n");
+						deallocate_String_vector(&children);
+						return;
+					}
+				}
+				snprintf(aux_path, sizeof(aux_path), "/chain/%s", children.data[children.count - 1]);
+
+				if (strcmp(tail_path, aux_path) != 0) {
+					snprintf(tail_path, sizeof(tail_path), "/chain/%s", children.data[children.count - 1]);
+					
+					if(tail)rtable_disconnect(tail);
+
+					char tail_data[64];
+					int len = sizeof(tail_data);
+					if (zoo_get(zh, tail_path, 0, tail_data, &len, NULL) != ZOK) {
+						printf("Erro ao obter dados do tail\n");
+						deallocate_String_vector(&children);
+						return;
+					}
+					tail = rtable_connect(tail_data);
+
+					if (tail == NULL) {
+						printf("Erro ao conectar ao tail\n");
+						deallocate_String_vector(&children);
+						return;
+					}
+				}
+			}
+			deallocate_String_vector(&children);
+		}
+	}
 }
 
 // Função para conectar ao ZooKeeper
@@ -105,6 +164,14 @@ void link_to_head_and_tail() {
     deallocate_String_vector(&children);
 }
 
+void sigint_handler(int signo) { // Fecha o server quando recebe um SIGINT, por exemplo CTRL + C
+    printf("Bye, bye!\n");
+	rtable_disconnect(head);
+	rtable_disconnect(tail);
+	zookeeper_close(zh);
+    exit(0);
+}
+
 //----------------------------------------------------------------------
 
 int main(int argc, char **argv) {
@@ -115,6 +182,9 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "Usage: %s ZK <server>:<port>\n", argv[0]);
 		return -1;
 	}
+
+	signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT, sigint_handler);
 
 	char* zookeeper_ip = argv[1];
 	connect_to_zookeeper(zookeeper_ip);
@@ -154,6 +224,7 @@ int main(int argc, char **argv) {
 			printf("Bye, bye!\n");
 			rtable_disconnect(head);
 			rtable_disconnect(tail);	
+			zookeeper_close(zh);
 			break;
 		}
 
@@ -331,4 +402,4 @@ int main(int argc, char **argv) {
 
 	return 0;
 
-}*/
+}

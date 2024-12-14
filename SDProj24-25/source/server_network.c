@@ -34,7 +34,6 @@ static char znode_path[1024];		// caminho do znode
 static char sucessor_path[256];	    // caminho do sucessor
 struct rtable_t* sucessor_server;	// tabela de roteamento
 static int server_pos = -1; 		// id do servidor
-static int is_tail = 0;				// flag para saber se é a cauda
 
 
 static int compare_strings(const void *a, const void *b) {
@@ -90,11 +89,11 @@ static void my_watcher_fn(zhandle_t *zzh, int type, int state, const char *path,
 				snprintf(aux_path, sizeof(aux_path), "/chain/%s", children.data[server_pos + 1]);
 
 				if(sucessor_server == NULL || strcmp(sucessor_path, aux_path) != 0){ // verifica se o servidor mudou
-					if (sucessor_path =='\0') {
+					if (sucessor_path[0] =='\0') {
 						rtable_disconnect(sucessor_server); // Desconecta o servidor anterior
 					}
 					snprintf(sucessor_path, sizeof(sucessor_path), "/chain/%s", children.data[server_pos + 1]);
-					printf("SucessorX: %s\n", sucessor_path);
+
 					char successor_data[1024];
 					int len = sizeof(successor_data);
 					int ret = zoo_get(zh, sucessor_path, 0, successor_data, &len, NULL); // obtem dados endereco e porta do novo sucessor
@@ -102,7 +101,13 @@ static void my_watcher_fn(zhandle_t *zzh, int type, int state, const char *path,
 						fprintf(stderr, "Erro ao obter dados do sucessor: %s\n", zerror(ret));
 						fprintf(stderr, "Successor path: %s\n", sucessor_path);
 					} else {
-						printf("Conectado ao sucessor: %s\n", successor_data);
+						// Null-terminate the data
+						if (len < sizeof(successor_data)) {
+							successor_data[len] = '\0';
+						} else {
+							successor_data[sizeof(successor_data) - 1] = '\0';
+						}
+
 						connect_to_next_server(successor_data); // conecta ao novo server
 					}
 				}
@@ -141,7 +146,7 @@ static void connect_to_zookeeper(char* zk_port, short port) {
 
 	zoo_set_debug_level(ZOO_LOG_LEVEL_ERROR);
 
-    zh = zookeeper_init(zk_port, is_linked, 5000, 0, NULL, 0);
+    zh = zookeeper_init(zk_port, is_linked, 2000, 0, NULL, 0);
     if (!zh) {
         fprintf(stderr, "Erro ao conectar ao ZooKeeper\n");
         exit(EXIT_FAILURE);
@@ -153,7 +158,6 @@ static void connect_to_zookeeper(char* zk_port, short port) {
     // Cria o ZNode com o IP e porta atuais
     char server_data[64];
     snprintf(server_data, sizeof(server_data), "127.0.0.1:%d", port); // 127.0.0.1:<port> string armazenada no zk
-
     // Criar ZNode efémero sequencial
     // ZOO_EPHEMERAL garante que é removido quando a conexão falha
     // ZOO_SEQUENCE adiciona nomerador ex: /chain/node0000000001
@@ -164,7 +168,7 @@ static void connect_to_zookeeper(char* zk_port, short port) {
         exit(EXIT_FAILURE);
     }
 
-    printf("Servidor registado no ZooKeeper com ZNode: %s\n", znode_path);
+    printf("Servidor registado no ZooKeeper\n");
 }
 
 // Adds watcher and position
@@ -184,16 +188,12 @@ void set_server() {
 		snprintf(aux_path, sizeof(aux_path), "/chain/%s", children.data[i]);
         if (strcmp(znode_path, aux_path) == 0) {
             server_pos = i;
-			is_tail = (i == children.count - 1);  // Se for o último servidor, é a 'tail';
 			break;
         }
     }
 
-    /*if(is_tail == 1) {// Nao é tail logo tem sucessor
-      Nao deveria criar ligacao com o sucessor aqui ?
-    }*/
 	sucessor_server = NULL;
-	sucessor_path[0] = '\0';
+	sucessor_path[strlen(sucessor_path)] = '\0';
 
     deallocate_String_vector(&children);
 }
@@ -203,7 +203,7 @@ void connect_to_next_server(char *server_data) {
     
 	sucessor_server = rtable_connect(server_data);
 
-	if (sucessor_server) {
+	if (!sucessor_server) {
 		fprintf(stderr, "Erro ao conectar ao servidor seguinte\n");
 		return;
 	}
@@ -234,13 +234,15 @@ int set_table(struct table_t* table){
 			fprintf(stderr, "Previous path: %s\n", prev_path);
 			return -1;
 		}
-		printf("Connected to the previous server at %s\n", prev_server_ip);
+		printf("set_table\n");
 		struct rtable_t* prev_server = rtable_connect(prev_server_ip);
 
 		if(prev_server == NULL){
 			fprintf(stderr, "Erro ao conectar ao servidor anterior\n");
 			return -1;
 		}
+
+		printf("Connected to the previous server at %s\n", prev_server_ip);
 
 		struct entry_t** entries = rtable_get_table(prev_server);
 		int n_entries = rtable_size(prev_server);
@@ -255,6 +257,7 @@ int set_table(struct table_t* table){
 		}
 		rtable_free_entries(entries);
 		rtable_disconnect(prev_server);
+		printf("Disconnected to the previous server at %s\n", prev_server_ip);
 	}
 	return 0;
 }
@@ -321,7 +324,8 @@ void *client_handler(void *args){
 					rtable_put(sucessor_server, entry);
 				}
 				else if(request-> opcode == MESSAGE_T__OPCODE__OP_DEL+1){
-					rtable_del(sucessor_server, request->key);
+					char key = strdup(request->key);
+					rtable_del(sucessor_server, key);
 				}
 				
 			}
@@ -566,5 +570,9 @@ int server_network_close(int socket){
 		//perror("Erro ao fechar o socket\n");
 		return -1;
 	}
+	if(sucessor_server)
+		rtable_disconnect(sucessor_server);
+	
+	zookeeper_close(zh);
 	return 0;
 }

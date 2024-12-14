@@ -32,8 +32,9 @@ struct rtable_t *rtable_connect(char *address_port) {
 	if (!rtable) return NULL;
 
 	// Parse the server address and port
-	char *address = strtok(address_port, ":");
+	char *address = strtok(strdup(address_port), ":");
 	char *port_str = strtok(NULL, ":");
+
 	if (!address || !port_str ) {
 		free(rtable);
 		return NULL;
@@ -278,7 +279,7 @@ struct entry_t **rtable_get_table(struct rtable_t *rtable) {
 	size_t n = response->n_entries;
 	EntryT **entries = response->entries;
 	struct entry_t ** s_entries = malloc(sizeof(struct entry_t)*n);
-
+	printf("n_entries: %zu\n", n);
 	for (size_t i = 0; i < n; i++) {
 		printf("%s :: %s\n",entries[i]->key,(char *) entries[i]->value.data);
 		s_entries[i] = entry_create(entries[i]->key, block_create(entries[i]->value.len,entries[i]->value.data));
@@ -294,6 +295,7 @@ void rtable_free_entries(struct entry_t **entries) {
 	if (!entries ) return;
 
 	for (int i = 0; entries[i] != NULL; i++) {
+
 		entry_destroy(entries[i]);
 	}
 
