@@ -31,7 +31,7 @@ pthread_mutex_t stats_mutex = PTHREAD_MUTEX_INITIALIZER;	// mutex para as estati
 // Variáveis globais do ZooKeeper
 static zhandle_t *zh;				// handler do ZooKeeper
 static char znode_path[1024];		// caminho do znode
-static char sucessor_path[256];	// caminho do sucessor
+static char sucessor_path[256];	    // caminho do sucessor
 struct rtable_t* sucessor_server;	// tabela de roteamento
 static int server_pos = -1; 		// id do servidor
 static int is_tail = 0;				// flag para saber se é a cauda
@@ -58,21 +58,23 @@ static void my_watcher_fn(zhandle_t *zzh, int type, int state, const char *path,
     if (state == ZOO_CONNECTED_STATE){
 		if (type == ZOO_CHILD_EVENT) {
 			struct String_vector children;
+			//Obter lista atualizada dos filhos
     		int ret = zoo_wget_children(zh, "/chain", my_watcher_fn, "Zookeeper Data Watcher", &children);
 			if (ret != ZOK) {
 				fprintf(stderr, "Erro ao obter filhos de /chain: %s\n", zerror(ret));
 				deallocate_String_vector(&children);
 				return;
 			}
-
+            //Numero incoerente de filhos
 			if (children.count <= 0){
 				fprintf(stderr, "Erro ao obter filhos de /chain\n");
 				deallocate_String_vector(&children);
 				return;
 			}
 
-			// Ordenar os filhos e identificar o sucessor
+			// Ordenar os filhos
 			qsort(children.data, children.count, sizeof(char *), compare_strings);
+			// Descobrir a posição deste servidor no zk
 			for (int i = 0; i < children.count; i++) {
 				char aux_path[256];
 				snprintf(aux_path, sizeof(aux_path), "/chain/%s", children.data[i]);
@@ -82,28 +84,31 @@ static void my_watcher_fn(zhandle_t *zzh, int type, int state, const char *path,
 				}
 			}
 
-			if(server_pos + 1 < children.count){
+			// Identificar o sucessor
+			if(server_pos + 1 < children.count){ // Se houver proximo servidor na lista
 				char aux_path[256];
 				snprintf(aux_path, sizeof(aux_path), "/chain/%s", children.data[server_pos + 1]);
-				if(sucessor_server == NULL || strcmp(sucessor_path, aux_path) != 0){
+
+				if(sucessor_server == NULL || strcmp(sucessor_path, aux_path) != 0){ // verifica se o servidor mudou
 					if (sucessor_path =='\0') {
-						rtable_disconnect(sucessor_server);
+						rtable_disconnect(sucessor_server); // Desconecta o servidor anterior
 					}
 					snprintf(sucessor_path, sizeof(sucessor_path), "/chain/%s", children.data[server_pos + 1]);
 					printf("SucessorX: %s\n", sucessor_path);
 					char successor_data[1024];
 					int len = sizeof(successor_data);
-					int ret = zoo_get(zh, sucessor_path, 0, successor_data, &len, NULL);
+					int ret = zoo_get(zh, sucessor_path, 0, successor_data, &len, NULL); // obtem dados endereco e porta do novo sucessor
 					if (ret != ZOK) {
 						fprintf(stderr, "Erro ao obter dados do sucessor: %s\n", zerror(ret));
 						fprintf(stderr, "Successor path: %s\n", sucessor_path);
 					} else {
 						printf("Conectado ao sucessor: %s\n", successor_data);
-						connect_to_next_server(successor_data);
+						connect_to_next_server(successor_data); // conecta ao novo server
 					}
 				}
 				
 			}else{
+				// Se nao houver sussesor, for cauda
 				sucessor_server = NULL;
 				sucessor_path[strlen(sucessor_path)] = '\0';
 			}
@@ -147,9 +152,11 @@ static void connect_to_zookeeper(char* zk_port, short port) {
 
     // Cria o ZNode com o IP e porta atuais
     char server_data[64];
-    snprintf(server_data, sizeof(server_data), "127.0.0.1:%d", port);
+    snprintf(server_data, sizeof(server_data), "127.0.0.1:%d", port); // 127.0.0.1:<port> string armazenada no zk
 
     // Criar ZNode efémero sequencial
+    // ZOO_EPHEMERAL garante que é removido quando a conexão falha
+    // ZOO_SEQUENCE adiciona nomerador ex: /chain/node0000000001
     int ret = zoo_create(zh, "/chain/node", server_data, strlen(server_data), &ZOO_OPEN_ACL_UNSAFE,
                          ZOO_EPHEMERAL | ZOO_SEQUENCE, znode_path, sizeof(znode_path));
     if (ret != ZOK) {
@@ -169,18 +176,22 @@ void set_server() {
         return;
     }
 
-    // Ordenar os filhos e identificar o sucessor
+    // Ordenar os filhos
     qsort(children.data, children.count, sizeof(char *), compare_strings);
+    //Identificar posicao atual na cadeia (ordem lexicográfica)
     for (int i = 0; i < children.count; i++) {
 		char aux_path[256];
 		snprintf(aux_path, sizeof(aux_path), "/chain/%s", children.data[i]);
         if (strcmp(znode_path, aux_path) == 0) {
             server_pos = i;
-			is_tail = 1;
+			is_tail = (i == children.count - 1);  // Se for o último servidor, é a 'tail';
 			break;
         }
     }
 
+    /*if(is_tail == 1) {// Nao é tail logo tem sucessor
+      Nao deveria criar ligacao com o sucessor aqui ?
+    }*/
 	sucessor_server = NULL;
 	sucessor_path[0] = '\0';
 
