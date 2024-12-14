@@ -25,31 +25,105 @@
 #define MAX_TOKENS 3
 #define USAGE_MESSAGE "Usage: p[ut] <key> <value> | g[et] <key> | d[el] <key> | s[ize] | [get]k[eys] | [get]t[able] | st[ats] | q[uit]\n"
 
+// Variáveis globais do ZooKeeper
+static zhandle_t *zh;
+static char head_path[256];
+static char tail_path[256];
+struct rtable_t *head;
+struct rtable_t *tail;
 
-int main(int argc, char **argv) {	// TODO rever isto tudoooo
+static int compare_strings(const void *a, const void *b) {
+    const char *str_a = *(const char **)a;
+    const char *str_b = *(const char **)b;
+    return strcmp(str_a, str_b);
+}
+
+// Callback do watcher
+static void my_watcher_fn(zhandle_t *zzh, int type, int state, const char *path, void *watcherCtx) {
+    if (type == ZOO_CHILD_EVENT) {
+        printf("Alteração detectada nos filhos de /chain\n");
+
+    }
+}
+
+// Função para conectar ao ZooKeeper
+static void connect_to_zookeeper(char* zk_port) {
+
+	zoo_set_debug_level(ZOO_LOG_LEVEL_ERROR);
+	
+    zh = zookeeper_init(zk_port, NULL, 2000, 0, NULL, 0);
+    if (!zh) {
+        fprintf(stderr, "Erro ao conectar ao ZooKeeper\n");
+        exit(EXIT_FAILURE);
+    }
+    printf("Cliente conectado ao ZooKeeper\n");
+}
+
+// Atualiza o head e o tail com base nos filhos de /chain
+void link_to_head_and_tail() {
+    struct String_vector children;
+    if (zoo_wget_children(zh, "/chain", my_watcher_fn, "Zookeeper Data Watcher", &children) != ZOK) {
+        fprintf(stderr, "Erro ao obter filhos de /chain\n");
+        return;
+    }
+    // Ordenar os filhos e identificar head e tail
+    qsort(children.data, children.count, sizeof(char *), compare_strings);
+    if (children.count > 0) {
+		snprintf(head_path, sizeof(head_path), "/chain/%s", children.data[0]);
+		snprintf(tail_path, sizeof(tail_path), "/chain/%s", children.data[children.count - 1]);
+
+        // Obter dados do head e tail
+        char head_data[64], tail_data[64];
+        int len = sizeof(head_data);
+        if (zoo_get(zh, head_path, 0, head_data, &len, NULL) != ZOK) {
+            printf("Erro ao obter dados do head\n");
+			deallocate_String_vector(&children);
+			return;
+        }
+		head = rtable_connect(head_data);
+
+		if (head == NULL) {
+			printf("Erro ao conectar ao head\n");
+			deallocate_String_vector(&children);
+			return;
+		}
+
+        len = sizeof(tail_data);
+        if (zoo_get(zh, tail_path, 0, tail_data, &len, NULL) != ZOK) {
+			printf("Erro ao obter dados do tail\n");
+			deallocate_String_vector(&children);
+			return;
+        }
+		tail = rtable_connect(tail_data);
+
+		if (tail == NULL) {
+			printf("Erro ao conectar ao tail\n");
+			deallocate_String_vector(&children);
+			return;
+		}
+    }
+    deallocate_String_vector(&children);
+}
+
+//----------------------------------------------------------------------
+
+int main(int argc, char **argv) {
 
 	// Mutexes already initialized with PTHREAD_MUTEX_INITIALIZER
 
 	if (argc != 2) {
-		fprintf(stderr, "Usage: %s <server>:<port>\n", argv[0]);
+		fprintf(stderr, "Usage: %s ZK <server>:<port>\n", argv[0]);
 		return -1;
 	}
 
-    // Conectar ao ZooKeeper
-    connect_to_zookeeper();
+	char* zookeeper_ip = argv[1];
+	connect_to_zookeeper(zookeeper_ip);
 
-    // Obter e fazer watch aos filhos de /chain
-    update_head_and_tail();
+    link_to_head_and_tail();
 
 	char command[MAX_COMMAND_LEN];
 	char *tokens[MAX_TOKENS]; // Array para guardar os pointers
 	int token_count;
-	struct rtable_t *rt = rtable_connect(argv[1]);
-
-	if (!rt) {
-		printf("Error in connect\n");
-		return -1;
-	}
 
 	// Loop principal
 	while (1) {
@@ -78,7 +152,8 @@ int main(int argc, char **argv) {	// TODO rever isto tudoooo
 		// Verifica se o comando é 'quit'
 		if (token != NULL &&  ( strcmp(token, "quit") == 0 || strcmp(token,"q") == 0 ) ) {
 			printf("Bye, bye!\n");
-			rtable_disconnect(rt);	// Termina a conexão com o servidor (TODO e se falhar?)
+			rtable_disconnect(head);
+			rtable_disconnect(tail);	
 			break;
 		}
 
@@ -107,14 +182,14 @@ int main(int argc, char **argv) {	// TODO rever isto tudoooo
 				//pthread_mutex_lock(&table_mutex);
 
 				// Verifica se a conexão com o servidor foi bem sucedida
-				if (rt->sockfd < 0) {
+				if (head->sockfd < 0) {
 					block_destroy(block);
 					entry_destroy(entry);
 					//pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
-				rtable_put(rt,entry);
+				rtable_put(head,entry);
 				//pthread_mutex_unlock(&table_mutex);
 
 			} else if (( strcmp(tokens[0], "get") == 0 || (strcmp(tokens[0], "g") == 0) ) ) {
@@ -128,12 +203,12 @@ int main(int argc, char **argv) {	// TODO rever isto tudoooo
 				//pthread_mutex_lock(&table_mutex);
 
 				// Verifica se a conexão com o servidor foi bem sucedida
-				if (rt->sockfd < 0) {
+				if (tail->sockfd < 0) {
 					//pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
-				struct block_t *block_received = rtable_get(rt, tokens[1]);
+				struct block_t *block_received = rtable_get(tail, tokens[1]);
 				//pthread_mutex_unlock(&table_mutex);
 
 				// Verifica se a operação get foi bem sucedida
@@ -153,12 +228,12 @@ int main(int argc, char **argv) {	// TODO rever isto tudoooo
 				//pthread_mutex_lock(&table_mutex);
 
 				// Verifica se a conexão com o servidor foi bem sucedida
-				if (rt->sockfd < 0) {
+				if (head->sockfd < 0) {
 					//pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
-				int del_result = rtable_del(rt,tokens[1]);
+				int del_result = rtable_del(head,tokens[1]);
 				//pthread_mutex_unlock(&table_mutex);
 
 				// Verifica se a operação del foi bem sucedida
@@ -173,12 +248,12 @@ int main(int argc, char **argv) {	// TODO rever isto tudoooo
 				//pthread_mutex_lock(&table_mutex);
 
 				// Verifica se a conexão com o servidor foi bem sucedida
-				if (rt->sockfd < 0) {
+				if (tail->sockfd < 0) {
 					//pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
-				int size = rtable_size(rt);
+				int size = rtable_size(tail);
 				//pthread_mutex_unlock(&table_mutex);
 
 				if (size == -1) {
@@ -193,13 +268,13 @@ int main(int argc, char **argv) {	// TODO rever isto tudoooo
 				//pthread_mutex_lock(&table_mutex);
 
 				// Verifica se a conexão com o servidor foi bem sucedida
-				if (rt->sockfd < 0) {
+				if (tail->sockfd < 0) {
 					//pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
-				size_t num_keys = rtable_size(rt);
-				char **keys = rtable_get_keys(rt);
+				size_t num_keys = rtable_size(tail);
+				char **keys = rtable_get_keys(tail);
 				//pthread_mutex_unlock(&table_mutex);
 
 				// Verifica se a operação get_keys foi bem sucedida
@@ -217,12 +292,12 @@ int main(int argc, char **argv) {	// TODO rever isto tudoooo
 				//pthread_mutex_lock(&table_mutex);
 
 				// Verifica se a conexão com o servidor foi bem sucedida
-				if (rt->sockfd < 0) {
+				if (tail->sockfd < 0) {
 					//pthread_mutex_unlock(&table_mutex);
 					break;
 				}
 
-				rtable_get_table(rt);	// TODO não estamos a usar o retorno do get_table
+				rtable_get_table(tail);	// TODO não estamos a usar o retorno do get_table
 				//pthread_mutex_unlock(&table_mutex);
 
 
@@ -231,12 +306,12 @@ int main(int argc, char **argv) {	// TODO rever isto tudoooo
 				//pthread_mutex_lock(&stats_mutex);
 
 				// Verifica se a conexão com o servidor foi bem sucedida
-				if (rt->sockfd < 0) {
+				if (tail->sockfd < 0) {
 					//pthread_mutex_unlock(&stats_mutex);
 					break;
 				}
 				
-				struct statistics_t *stats_result = rtable_stats(rt);
+				struct statistics_t *stats_result = rtable_stats(tail);
 				//pthread_mutex_unlock(&stats_mutex);
 
 				// Verifica se a operação del foi bem sucedida

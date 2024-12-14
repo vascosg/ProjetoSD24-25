@@ -31,7 +31,7 @@ pthread_mutex_t stats_mutex = PTHREAD_MUTEX_INITIALIZER;	// mutex para as estati
 // Variáveis globais do ZooKeeper
 static zhandle_t *zh;				// handler do ZooKeeper
 static char znode_path[1024];		// caminho do znode
-static char successor_path[256];	// caminho do sucessor
+static char sucessor_path[256];	// caminho do sucessor
 struct rtable_t* sucessor_server;	// tabela de roteamento
 static int server_pos = -1; 		// id do servidor
 static int is_tail = 0;				// flag para saber se é a cauda
@@ -43,11 +43,71 @@ static int compare_strings(const void *a, const void *b) {
     return strcmp(str_a, str_b);
 }
 
+void is_linked(zhandle_t *zh, int type, int state, const char *path, void *context) {
+	if (type == ZOO_CHILD_EVENT) {
+		if(state == ZOO_CONNECTED_STATE) {
+			printf("Is Connected\n");
+		} else {
+			printf("Is not Connected\n");
+		}
+	}
+}
+
 // Callback do watcher
 static void my_watcher_fn(zhandle_t *zzh, int type, int state, const char *path, void *watcherCtx) {
     if (state == ZOO_CONNECTED_STATE){
 		if (type == ZOO_CHILD_EVENT) {
-			printf("Alteração detectada nos filhos de /chain\n");
+			struct String_vector children;
+    		int ret = zoo_wget_children(zh, "/chain", my_watcher_fn, "Zookeeper Data Watcher", &children);
+			if (ret != ZOK) {
+				fprintf(stderr, "Erro ao obter filhos de /chain: %s\n", zerror(ret));
+				deallocate_String_vector(&children);
+				return;
+			}
+
+			if (children.count <= 0){
+				fprintf(stderr, "Erro ao obter filhos de /chain\n");
+				deallocate_String_vector(&children);
+				return;
+			}
+
+			// Ordenar os filhos e identificar o sucessor
+			qsort(children.data, children.count, sizeof(char *), compare_strings);
+			for (int i = 0; i < children.count; i++) {
+				char aux_path[256];
+				snprintf(aux_path, sizeof(aux_path), "/chain/%s", children.data[i]);
+				if (strcmp(znode_path, aux_path) == 0) {
+					server_pos = i;
+					break;
+				}
+			}
+
+			if(server_pos + 1 < children.count){
+				char aux_path[256];
+				snprintf(aux_path, sizeof(aux_path), "/chain/%s", children.data[server_pos + 1]);
+				if(sucessor_server == NULL || strcmp(sucessor_path, aux_path) != 0){
+					if (sucessor_path =='\0') {
+						rtable_disconnect(sucessor_server);
+					}
+					snprintf(sucessor_path, sizeof(sucessor_path), "/chain/%s", children.data[server_pos + 1]);
+					printf("SucessorX: %s\n", sucessor_path);
+					char successor_data[1024];
+					int len = sizeof(successor_data);
+					int ret = zoo_get(zh, sucessor_path, 0, successor_data, &len, NULL);
+					if (ret != ZOK) {
+						fprintf(stderr, "Erro ao obter dados do sucessor: %s\n", zerror(ret));
+						fprintf(stderr, "Successor path: %s\n", sucessor_path);
+					} else {
+						printf("Conectado ao sucessor: %s\n", successor_data);
+						connect_to_next_server(successor_data);
+					}
+				}
+				
+			}else{
+				sucessor_server = NULL;
+				sucessor_path[strlen(sucessor_path)] = '\0';
+			}
+			deallocate_String_vector(&children);
 		}
 	}
 }
@@ -74,7 +134,9 @@ void ensure_chain_node_exists() {
 // Função para conectar ao ZooKeeper
 static void connect_to_zookeeper(char* zk_port, short port) {
 
-    zh = zookeeper_init(zk_port, NULL, 2000, 0, NULL, 0);
+	zoo_set_debug_level(ZOO_LOG_LEVEL_ERROR);
+
+    zh = zookeeper_init(zk_port, is_linked, 5000, 0, NULL, 0);
     if (!zh) {
         fprintf(stderr, "Erro ao conectar ao ZooKeeper\n");
         exit(EXIT_FAILURE);
@@ -85,7 +147,7 @@ static void connect_to_zookeeper(char* zk_port, short port) {
 
     // Cria o ZNode com o IP e porta atuais
     char server_data[64];
-    snprintf(server_data, sizeof(server_data), "%s:%d", "127.0.0.1", port);
+    snprintf(server_data, sizeof(server_data), "127.0.0.1:%d", port);
 
     // Criar ZNode efémero sequencial
     int ret = zoo_create(zh, "/chain/node", server_data, strlen(server_data), &ZOO_OPEN_ACL_UNSAFE,
@@ -98,8 +160,8 @@ static void connect_to_zookeeper(char* zk_port, short port) {
     printf("Servidor registado no ZooKeeper com ZNode: %s\n", znode_path);
 }
 
-// Atualiza o sucessor com base nos filhos de /chain
-void update_successor() {
+// Adds watcher and position
+void set_server() {
     struct String_vector children;
     int ret = zoo_wget_children(zh, "/chain", my_watcher_fn, "Zookeeper Data Watcher", &children);
     if (ret != ZOK) {
@@ -109,31 +171,18 @@ void update_successor() {
 
     // Ordenar os filhos e identificar o sucessor
     qsort(children.data, children.count, sizeof(char *), compare_strings);
-    successor_path[0] = '\0';	// caminho do servidor seguinte
     for (int i = 0; i < children.count; i++) {
-        if (strcmp(znode_path, children.data[i]) < 0) {
-            snprintf(successor_path, sizeof(successor_path), "/chain/%s", children.data[i]);
+		char aux_path[256];
+		snprintf(aux_path, sizeof(aux_path), "/chain/%s", children.data[i]);
+        if (strcmp(znode_path, aux_path) == 0) {
             server_pos = i;
+			is_tail = 1;
 			break;
         }
     }
-    is_tail = (successor_path[0] == '\0');
 
-    // Se houver sucessor, conectar-se a ele
-    if (!is_tail) {
-        char successor_data[64];
-        int len = sizeof(successor_data);
-        ret = zoo_get(zh, successor_path, 0, successor_data, &len, NULL);
-        if (ret != ZOK) {
-            fprintf(stderr, "Erro ao obter dados do sucessor: %s\n", zerror(ret));
-            fprintf(stderr, "Successor path: %s\n", successor_path);
-        } else {
-            printf("Conectado ao sucessor: %s\n", successor_data);
-            connect_to_next_server(successor_data);
-        }
-    } else {
-        printf("Este servidor é a cauda da cadeia.\n");
-    }
+	sucessor_server = NULL;
+	sucessor_path[0] = '\0';
 
     deallocate_String_vector(&children);
 }
@@ -156,38 +205,45 @@ void connect_to_next_server(char *server_data) {
 int set_table(struct table_t* table){
 	
 	if(server_pos > 0){
-		if(znode_path != NULL){
-			char prev_server_ip[1024];
-			int len = sizeof(prev_server_ip);
-			int ret = zoo_get(zh, znode_path, 0, prev_server_ip, &len, NULL);
-			if (ret != ZOK) {
-				fprintf(stderr, "Erro ao obter dados do servidor anterior: %s\n", zerror(ret));
-				fprintf(stderr, "Previous path: %s\n", znode_path);
-				return -1;
-			}
+		printf("Server position: %d\n", server_pos);
+		struct String_vector children;
+		int ret = zoo_wget_children(zh, "/chain", my_watcher_fn, "Zookeeper Data Watcher", &children);
+		if(ret != ZOK){
+			fprintf(stderr, "Erro ao obter filhos de /chain: %s\n", zerror(ret));
+			return -1;
+		}
+		char prev_path[256];
+		snprintf(prev_path, sizeof(prev_path), "/chain/%s", children.data[server_pos - 1]);
 
-			struct rtable_t* prev_server = rtable_connect(prev_server_ip);
+		char prev_server_ip[1024];
+		int len = sizeof(prev_server_ip);
+		ret = zoo_get(zh, prev_path, 0, prev_server_ip, &len, NULL);
+		if (ret != ZOK) {
+			fprintf(stderr, "Erro ao obter dados do servidor anterior: %s\n", zerror(ret));
+			fprintf(stderr, "Previous path: %s\n", prev_path);
+			return -1;
+		}
+		printf("Connected to the previous server at %s\n", prev_server_ip);
+		struct rtable_t* prev_server = rtable_connect(prev_server_ip);
 
-			if(prev_server == NULL){
-				fprintf(stderr, "Erro ao conectar ao servidor anterior\n");
-				return -1;
-			}
+		if(prev_server == NULL){
+			fprintf(stderr, "Erro ao conectar ao servidor anterior\n");
+			return -1;
+		}
 
-			struct entry_t** entries = rtable_get_table(prev_server);
-			int n_entries = rtable_size(prev_server);
-			for (size_t i = 0; i < n_entries; i++) {
-				if (entries[i] != NULL) {
-					int ret = table_put(table, entries[i]->key, entries[i]->value);
-					if (ret != 0) {
-						fprintf(stderr, "Erro ao inserir entrada na tabela\n");
-						return -1;
-					}
+		struct entry_t** entries = rtable_get_table(prev_server);
+		int n_entries = rtable_size(prev_server);
+		for (size_t i = 0; i < n_entries; i++) {
+			if (entries[i] != NULL) {
+				int ret = table_put(table, entries[i]->key, entries[i]->value);
+				if (ret != 0) {
+					fprintf(stderr, "Erro ao inserir entrada na tabela\n");
+					return -1;
 				}
 			}
-			rtable_free_entries(entries);
-			rtable_disconnect(prev_server);
-
 		}
+		rtable_free_entries(entries);
+		rtable_disconnect(prev_server);
 	}
 	return 0;
 }
@@ -238,10 +294,10 @@ void *client_handler(void *args){
 
 			inicio_tempo = clock(); // mudar para gettimeofday
 
-			
-			if(invoke(request, table)){
+			if(invoke(request, table) == -1){
 				printf("Erro ao executar a operação\n");
 			}
+			printf("Operação executada\n");
 			// Verifica se ocorreu um erro
 			if (sucessor_server != NULL) {
 				
@@ -347,7 +403,7 @@ int server_network_init(char* zk_port, short port){
 
 	connect_to_zookeeper(zk_port,port);
 
-	update_successor();
+	set_server();
 
 	return server_socket;
 }
