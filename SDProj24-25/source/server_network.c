@@ -255,7 +255,7 @@ int set_table(struct table_t* table){
 				}
 			}
 		}
-		rtable_free_entries(entries);
+		//rtable_free_entries(entries);
 		rtable_disconnect(prev_server);
 		printf("Disconnected to the previous server at %s\n", prev_server_ip);
 	}
@@ -324,8 +324,7 @@ void *client_handler(void *args){
 					rtable_put(sucessor_server, entry);
 				}
 				else if(request-> opcode == MESSAGE_T__OPCODE__OP_DEL+1){
-					char key = strdup(request->key);
-					rtable_del(sucessor_server, key);
+					rtable_del(sucessor_server, request -> key);
 				}
 				
 			}

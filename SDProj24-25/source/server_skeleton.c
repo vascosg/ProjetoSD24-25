@@ -98,12 +98,6 @@ int invoke(MessageT *msg, struct table_t *table){		// incluir trataemnto da OP_S
 			return -1;
 		}
 
-		// Limpar o campo da key
-		if (msg->key != NULL && msg->key != protobuf_c_empty_string) {
-			free(msg->key);
-			msg->key = NULL;  // Definir para NULL para indicar que não será usado
-		}
-
 		msg->opcode = MESSAGE_T__OPCODE__OP_DEL + 1;
 		msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
 
