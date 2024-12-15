@@ -21,7 +21,7 @@ int server_socket;
 struct table_t *table;
 
 void sigint_handler(int signo) { // Fecha o server quando recebe um SIGINT, por exemplo CTRL + C
-    printf("Signal %d apanhado. A terminar o servidor.\n", signo);
+    printf("\nA terminar o servidor.\n");
     server_network_close(server_socket);
     server_skeleton_destroy(table);
     exit(0);
