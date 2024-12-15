@@ -224,7 +224,6 @@ int main(int argc, char **argv) {
 			printf("Bye, bye!\n");
 			rtable_disconnect(head);
 			rtable_disconnect(tail);	
-			zookeeper_close(zh);
 			break;
 		}
 
@@ -369,6 +368,7 @@ int main(int argc, char **argv) {
 				}
 
 				rtable_get_table(tail);	// TODO não estamos a usar o retorno do get_table
+				
 				//pthread_mutex_unlock(&table_mutex);
 
 

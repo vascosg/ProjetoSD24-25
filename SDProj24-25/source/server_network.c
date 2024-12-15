@@ -34,6 +34,7 @@ static char znode_path[1024];		// caminho do znode
 static char sucessor_path[256];	    // caminho do sucessor
 struct rtable_t* sucessor_server;	// tabela de roteamento
 static int server_pos = -1; 		// id do servidor
+int is_connected = 0;
 
 
 static int compare_strings(const void *a, const void *b) {
@@ -43,11 +44,11 @@ static int compare_strings(const void *a, const void *b) {
 }
 
 void is_linked(zhandle_t *zh, int type, int state, const char *path, void *context) {
-	if (type == ZOO_CHILD_EVENT) {
+	if (type == ZOO_SESSION_EVENT) {
 		if(state == ZOO_CONNECTED_STATE) {
-			printf("Is Connected\n");
+			is_connected = 1;
 		} else {
-			printf("Is not Connected\n");
+			is_connected = 0;
 		}
 	}
 }
@@ -134,7 +135,7 @@ void ensure_chain_node_exists() {
             fprintf(stderr, "Erro ao criar o nó /chain: %s\n", zerror(ret));
             exit(EXIT_FAILURE);
         }
-        printf("Nó /chain criado com sucesso\n");
+
     } else if (ret != ZOK) {
         fprintf(stderr, "Erro ao verificar a existência do nó /chain: %s\n", zerror(ret));
         exit(EXIT_FAILURE);
@@ -152,23 +153,25 @@ static void connect_to_zookeeper(char* zk_port, short port) {
         exit(EXIT_FAILURE);
     }
 
+	printf("Connected to ZooKeeper in: %s\n", zk_port);
+
     // Garante que o nó /chain existe
     ensure_chain_node_exists();
 
-    // Cria o ZNode com o IP e porta atuais
-    char server_data[64];
-    snprintf(server_data, sizeof(server_data), "127.0.0.1:%d", port); // 127.0.0.1:<port> string armazenada no zk
-    // Criar ZNode efémero sequencial
-    // ZOO_EPHEMERAL garante que é removido quando a conexão falha
-    // ZOO_SEQUENCE adiciona nomerador ex: /chain/node0000000001
-    int ret = zoo_create(zh, "/chain/node", server_data, strlen(server_data), &ZOO_OPEN_ACL_UNSAFE,
-                         ZOO_EPHEMERAL | ZOO_SEQUENCE, znode_path, sizeof(znode_path));
-    if (ret != ZOK) {
-        fprintf(stderr, "Erro ao criar ZNode: %s\n", zerror(ret));
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Servidor registado no ZooKeeper\n");
+	if(is_connected == 1){
+		// Cria o ZNode com o IP e porta atuais
+		char server_data[64];
+		snprintf(server_data, sizeof(server_data), "127.0.0.1:%d", port); // 127.0.0.1:<port> string armazenada no zk
+		// Criar ZNode efémero sequencial
+		// ZOO_EPHEMERAL garante que é removido quando a conexão falha
+		// ZOO_SEQUENCE adiciona nomerador ex: /chain/node0000000001
+		int ret = zoo_create(zh, "/chain/node", server_data, strlen(server_data), &ZOO_OPEN_ACL_UNSAFE,
+							ZOO_EPHEMERAL | ZOO_SEQUENCE, znode_path, sizeof(znode_path));
+		if (ret != ZOK) {
+			fprintf(stderr, "Erro ao criar ZNode: %s\n", zerror(ret));
+			exit(EXIT_FAILURE);
+		}
+	}
 }
 
 // Adds watcher and position
@@ -216,7 +219,6 @@ void connect_to_next_server(char *server_data) {
 int set_table(struct table_t* table){
 	
 	if(server_pos > 0){
-		printf("Server position: %d\n", server_pos);
 		struct String_vector children;
 		int ret = zoo_wget_children(zh, "/chain", my_watcher_fn, "Zookeeper Data Watcher", &children);
 		if(ret != ZOK){
@@ -234,15 +236,12 @@ int set_table(struct table_t* table){
 			fprintf(stderr, "Previous path: %s\n", prev_path);
 			return -1;
 		}
-		printf("set_table\n");
 		struct rtable_t* prev_server = rtable_connect(prev_server_ip);
 
 		if(prev_server == NULL){
 			fprintf(stderr, "Erro ao conectar ao servidor anterior\n");
 			return -1;
 		}
-
-		printf("Connected to the previous server at %s\n", prev_server_ip);
 
 		struct entry_t** entries = rtable_get_table(prev_server);
 		int n_entries = rtable_size(prev_server);
@@ -257,7 +256,6 @@ int set_table(struct table_t* table){
 		}
 		//rtable_free_entries(entries);
 		rtable_disconnect(prev_server);
-		printf("Disconnected to the previous server at %s\n", prev_server_ip);
 	}
 	return 0;
 }
@@ -307,11 +305,9 @@ void *client_handler(void *args){
 		} else {
 
 			inicio_tempo = clock(); // mudar para gettimeofday
-
 			if(invoke(request, table) == -1){
 				printf("Erro ao executar a operação\n");
 			}
-			printf("Operação executada\n");
 			// Verifica se ocorreu um erro
 			if (sucessor_server != NULL) {
 				

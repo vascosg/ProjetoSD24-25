@@ -126,6 +126,7 @@ int rtable_put(struct rtable_t *rtable, struct entry_t *entry) {
 	message_t__free_unpacked(received_msg, NULL);
 	free(packed_msg);
 
+	printf("Entry added\n");
 
 	return 0;
 
@@ -279,7 +280,6 @@ struct entry_t **rtable_get_table(struct rtable_t *rtable) {
 	size_t n = response->n_entries;
 	EntryT **entries = response->entries;
 	struct entry_t ** s_entries = malloc(sizeof(struct entry_t)*n);
-	printf("n_entries: %zu\n", n);
 	for (size_t i = 0; i < n; i++) {
 		printf("%s :: %s\n",entries[i]->key,(char *) entries[i]->value.data);
 		s_entries[i] = entry_create(entries[i]->key, block_create(entries[i]->value.len,entries[i]->value.data));
