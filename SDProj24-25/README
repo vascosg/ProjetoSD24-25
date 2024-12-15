@@ -1,1 +1,9 @@
-Tive de adicionr "struct" atraz de cada MessageT incluindo em htmessage.pb-c.h
+---------------------------------------
+---------------  SD-054 ---------------
+    Filipa Inácio       fc59788
+    Tomás Canilhas      fc59794
+    Vasco Baldé         fc58174
+---------------------------------------
+---------------------------------------
+
+Existem memory leaks no código que foram identificados com o valgrind, mas não conseguimos corrigir.
